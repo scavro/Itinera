@@ -1,0 +1,19 @@
+/* Generated from DESIGN.md; run node scripts/generate-tokens.mjs. */
+:root {
+  --color-primary: #244b40;
+  --color-background: #f5f0e6;
+  --color-surface: #fffdf8;
+  --color-text: #25372f;
+  --color-muted: #66726a;
+  --color-accent: #ad713f;
+  --color-border: #dfdfd3;
+  --color-danger: #a63636;
+  --color-dark-background: #14201c;
+  --color-dark-surface: #1d2c25;
+  --color-dark-text: #edf2eb;
+  --color-dark-muted: #abb8ac;
+  --color-dark-primary: #b1cebb;
+  --color-dark-border: #3a4b40;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Newsreader', Georgia, serif;
+}

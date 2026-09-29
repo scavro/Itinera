@@ -1,0 +1,27 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["src"],
+  "locale": "es-ES",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": [
+    "Select/Listbox",
+    "Date",
+    "Form",
+    "Scrollbar",
+    "Toast",
+    "CRUD"
+  ],
+  "ownership": { "Select/Listbox": "native", "Date": "native" },
+  "requiredCommands": ["typecheck", "unit", "build", "format", "tokens"],
+  "commands": {
+    "typecheck": "npm run typecheck",
+    "unit": "npm test",
+    "build": "npm run build",
+    "format": "npm run format:check",
+    "tokens": "node scripts/generate-tokens.mjs --check"
+  },
+  "evidence": {
+    "crudFullFlow": "docs/VERIFICATION.md",
+    "failurePaths": "docs/VERIFICATION.md"
+  }
+}
