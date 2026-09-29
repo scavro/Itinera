@@ -2,46 +2,64 @@
 
 ## Product context and business-context sources
 
-Producto personal, español es-ES, móvil y escritorio. Referencia funcional: `PLAN.md` (alcance, prioridades culturales, precios, privacidad, proveedores y despliegue). Esta entrega es un **esqueleto de demostración en memoria**, sin backend, cuenta ni facturación. No sustituye las siguientes fases del plan. No hay registro, cobros ni reservas. La eliminación afecta únicamente al borrador de la pestaña, previa confirmación. Exportar descarga un archivo privado que el usuario controla. No se escriben viajes ni credenciales en almacenamiento del navegador. La única preferencia persistida es el tema. Japón no es mercado ni locale objetivo.
+Producto personal, español es-ES, móvil y escritorio. `PLAN.md` define alcance, prioridades, precios, proveedores y despliegue. Esta fase añade acceso con un único propietario y persistencia Worker/D1. No hay registro público, reservas ni facturación. IA, fuentes, horarios y precios siguen pendientes; Puglia es un ejemplo ficticio. Japón no es mercado ni locale objetivo.
+
+La eliminación quita el viaje del servidor y no tiene papelera: confirmación que identifica el destino y explica la pérdida. Exportar descarga una copia controlada por el usuario. Solo el tema se guarda en localStorage; viajes, claves y contraseña no. La cookie de sesión es HttpOnly y Secure en HTTPS. La nube todavía requiere aceptación remota.
 
 ## Visual contract
 
-`DESIGN.md` → `scripts/generate-tokens.mjs` → `src/tokens.css` → roles de `src/styles.css` → componentes. Temas claro/oscuro y preferencias de movimiento/contraste. Accesibilidad objetivo WCAG 2.2 AA, sin afirmar certificación.
+`DESIGN.md` → `scripts/generate-tokens.mjs` → `src/tokens.css` → roles en `src/styles.css` → componentes. Claro crema/verde y oscuro, movimiento reducido y contraste del sistema. Accesibilidad objetivo WCAG 2.2 AA, sin afirmar certificación.
 
 ## Canonical UI Map
 
-| Capability     | Canonical owner                             | Source of truth                 | Allowed variants | Verification                        |
-| -------------- | ------------------------------------------- | ------------------------------- | ---------------- | ----------------------------------- |
-| Select/Listbox | Field en src/components/ui.tsx              | UX-CONTRACT.md                  | native           | teclado y popup en navegador        |
-| Date           | Field en src/components/ui.tsx              | UX-CONTRACT.md                  | native           | edición ISO, interfaz nativa del OS |
-| Form           | TripEditor en src/components/TripEditor.tsx | src/domain.ts                   | create / edit    | validación y conservar borrador     |
-| Scrollbar      | src/styles.css                              | DESIGN.md                       | global           | computed style                      |
-| Toast          | Toast en src/components/ui.tsx              | UX-CONTRACT.md                  | info / success   | live region                         |
-| CRUD           | App en src/App.tsx                          | PLAN.md y este contrato de demo | memoria temporal | recorrido navegador                 |
+| Capability     | Canonical owner                                                    | Source of truth                  | Allowed variants      | Verification              |
+| -------------- | ------------------------------------------------------------------ | -------------------------------- | --------------------- | ------------------------- |
+| Select/Listbox | Field en src/components/ui.tsx                                     | este contrato                    | native                | teclado y popup del OS    |
+| Date           | Field en src/components/ui.tsx                                     | src/domain.ts                    | native                | fechas ISO                |
+| Form           | TripEditor en src/components/TripEditor.tsx; Login reutiliza Field | src/domain.ts y server/schema.ts | create / edit / login | validación y borrador     |
+| Scrollbar      | src/styles.css                                                     | DESIGN.md                        | global                | estilos y pantallas bajas |
+| Toast          | Toast en src/components/ui.tsx                                     | este contrato                    | info / success        | live region               |
+| CRUD           | App y useNotebook en src                                           | API del Worker y D1              | persistente           | navegador e integración   |
+
+Login vive en `src/components/Login.tsx`; `Root.tsx` comprueba sesión antes de montar el cuaderno y coordina caducidad. Dialog compartido gestiona foco, Escape y suspensión por sesión mediante SessionBlocked. No duplicar estos comportamientos por pantalla.
 
 ## Navigation and datasets
 
-Siete secciones semánticas, título localizado por ruta hash. Hash permite historial atrás/adelante. Filtros/búsqueda en memoria: excepción deliberada por privacidad, no transmitir intereses/destinos en URL. Listas pequeñas completas; no paginación ficticia. Vacío explica cómo comenzar; sin resultados ofrece limpiar búsqueda. Un único scroll de documento, menú horizontal en móvil sin ocultar acciones. Formularios en diálogo; navegación de fondo inerte.
+Siete secciones semánticas mediante hash con historial atrás/adelante y título localizado. Búsqueda y filtros pequeños en memoria: no transmitir intereses o destinos en URL. Listas completas sin paginación ficticia. Vacío explica cómo comenzar; sin resultados permite limpiar filtros. Documento con scroll natural; sidebar fija desplazable en escritorio si falta altura, navegación horizontal en móvil. Formularios en diálogo con fondo inerte.
 
 ## Flow ledger
 
-| Operation   | Trigger                | Success                                                 | Failure recovery                 | Focus                | Source ref          |
-| ----------- | ---------------------- | ------------------------------------------------------- | -------------------------------- | -------------------- | ------------------- |
-| Create      | Nuevo viaje            | borrador en pestaña y Mi viaje                          | errores inline, conserva valores | título de ruta       | PLAN.md esqueleto   |
-| Edit        | Editar viaje           | conserva id y selecciones; invalida días fuera de rango | conserva formulario              | disparador           | PLAN.md criterios   |
-| Delete      | eliminar en Mis viajes | quita borrador tras confirmación                        | cancelar no cambia datos         | encabezado de lista  | alcance demo arriba |
-| Search      | filtro cultural        | lista local inmediata                                   | vacío y limpiar                  | permanece en entrada | PLAN.md cultura     |
-| Cancel/back | cerrar editor          | solicita descartar si hay cambios                       | seguir editando                  | foco restaurado      | contrato formulario |
-| Export      | Exportar               | JSON descargado con marca demo                          | aviso de error                   | disparador           | PLAN.md privacidad  |
+| Operation   | Trigger                        | Success                                                                  | Failure recovery                                              | Focus                         |
+| ----------- | ------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------- | ----------------------------- |
+| Login       | Entrar a mi cuaderno           | sesión y cuaderno del servidor                                           | error genérico; conserva usuario, borra contraseña incorrecta | primer error o contraseña     |
+| Create      | Nuevo viaje                    | confirma D1 antes de cerrar y abrir itinerario                           | conserva formulario, error inline y reintento                 | título de itinerario          |
+| Edit        | Editar viaje                   | conserva id/selecciones y reajusta fechas; cierra tras confirmación      | conserva formulario                                           | título de itinerario          |
+| Delete      | eliminar en Mis viajes         | quita tras confirmación D1                                               | conserva diálogo y viaje                                      | encabezado de lista           |
+| Selection   | interés, itinerario, proveedor | cambio inmediato, guardado automático a los 500 ms                       | banner persistente y reintento; conflicto no sobrescribe      | control activado              |
+| Search      | filtro cultural                | lista local inmediata                                                    | vacío y limpiar                                               | entrada                       |
+| Cancel/back | cerrar editor                  | confirmar descarte si hay cambios                                        | seguir editando conserva valores                              | disparador                    |
+| Export      | Exportar                       | JSON itinera-trip-v3 con estado de investigación                         | aviso de error                                                | disparador                    |
+| Conflict    | escritura con versión antigua  | exportar cambios y cargar versión guardada, tras confirmar pérdida local | mantener cambios en pestaña                                   | conservar cambios por defecto |
+| Logout      | Cerrar sesión                  | guarda pendiente, revoca cookie en servidor y avisa otras pestañas       | error visible; no anuncia salida si falla                     | título de login               |
 
 ## Validation and overlays
 
-Forms `noValidate`, labels y errores asociados; primer error recibe foco. Fechas ISO válidas, fin posterior al inicio, presupuesto positivo por persona y viajeros entre 1 y 12. `Trip.budgetPerPerson` almacena céntimos de euro; `groupBudget` calcula el total conjunto y la interfaz etiqueta ambos importes. Modal nativo `showModal` limita foco, Escape pasa por guard de cambios, cierre explícito; sin diálogos anidados. Confirmación de descarte sustituye contenido y permite volver. Toast `role=status`, aviso efímero 5 s; condiciones persistentes en banner. Sin alert/confirm/prompt. Textareas resize none. Menús nativos y calendarios aceptan geometría/idioma del OS, aplicación usa es-ES.
+Forms `noValidate`, etiquetas visibles, errores asociados, primer error con foco. Fechas ISO válidas, fin posterior a inicio, máximo 60 noches, presupuesto positivo por persona y 1–12 viajeros. `budgetPerPerson` son céntimos enteros; grupo calculado por código. Server/schema limita campos, tamaños, IDs y pertenencia del viaje activo.
+
+Modal nativo `showModal`, Escape con guard de cambios, cierre explícito, restauración de foco. Campo destino con foco inicial; confirmaciones destructivas enfocan conservar/cancelar. Sin diálogos anidados: el descarte reemplaza el contenido. Toast role=status por 5 s; errores persistentes en banner o junto al formulario. Textareas resize:none. Select/calendario nativos aceptan geometría e idioma del OS. Contraseña con botón mostrar/ocultar y autocomplete=current-password; usuario autocomplete=username.
 
 ## Async, permission and resilience
 
-No peticiones remotas, credenciales ni mutaciones facturables. Acciones de demo síncronas y en memoria; no simular guardado nube, carga o progreso. Cada pestaña es independiente; recargar restaura ejemplo. Beforeunload avisa tras cambios por pérdida de memoria. Red no necesaria una vez cargada app; no service worker ni offline persistente. APIs, persistencia D1, Access, sesión, conflictos y consulta real están pendientes y se muestran así en Ajustes. No introducir login decorativo. No se puede iniciar investigación en esta entrega. OpenCode Go permanece pendiente de compatibilidad; nunca cambiar a Zen. Seleccionar proveedor es una preferencia, no una conexión ni gasto. Un único proveedor seleccionado.
+Estados de guardado: loading, saved, pending, saving, error, conflict, expired. «Guardado» solo después de confirmación del servidor. Autosave serializa peticiones con versión y UUID; ante respuesta perdida se reutiliza el identificador. Crear/editar/eliminar bloquean duplicados y navegación durante la escritura. Una respuesta antigua no sustituye una carga más reciente. API con timeout de 15 s y mensajes localizados. No reintentos silenciosos infinitos.
+
+Sin red: mantener cambios en la pestaña, mostrar fallo y reintento. No service worker ni persistencia offline. Beforeunload avisa cuando hay cambios pendientes o editor abierto; cerrar o recargar puede perder borradores sin confirmar. En conflicto, no mezclar ni sobrescribir automáticamente: exportar la copia local y confirmar antes de cargar la remota.
+
+Sesión absoluta de dos horas, sin prolongación silenciosa; expiración detectada por temporizador o 401. Ocultar cuaderno y cerrar temporalmente el modal sin desmontar el formulario. Tras entrar, recuperar campos y reintentar; no exponerlos en login ni guardarlos en localStorage. Cerrar sesión desmonta el cuaderno en todas las pestañas del mismo navegador mediante BroadcastChannel. Revocar en D1 invalida la cookie aunque otra pestaña no reciba el aviso.
+
+La identidad solo puede ser owner; login y logout son los únicos endpoints de auth expuestos. No signup, permisos editables, correo ni recuperación pública. Administración por terminal. Escribir exige Origin exacto; hostnames alternativos rechazados. Respuestas privadas no-store y archivos privados servidos después de comprobar sesión. Las APIs de sesión no devuelven tokens ni hashes.
+
+La selección de proveedor es persistente y no configura una conexión ni consume saldo. Solo uno preferido; OpenCode Go pendiente de compatibilidad, sin sustitución por Zen ni cambio automático. No se inicia investigación en esta fase.
 
 ## Verification
 
-Comandos: typecheck, tests de dominio, producción, formato, tokens, audit strict, lint DESIGN. Evidencia de interacción y revisión visual en `docs/VERIFICATION.md`. Browser: crear/editar/eliminar/cancelar, filtros vacío, cultura/itinerario, temas, teclado, ancho estrecho. Integración Cloudflare y APIs excluidas de aceptación local; la nube requiere la fase protegida del PLAN.
+Typecheck, seis tests de dominio, build, formato, tokens y audit strict. Integración real del runtime local con D1 aislada: login, datos privados, sesión, logout, límite de intentos, persistencia, validación y conflictos. Navegador: formularios, caducidad con borrador, reentrada, dos pestañas, guardado, móvil y temas. Evidencia en `docs/VERIFICATION.md`. D1 remota, CPU Free y acceso entre dispositivos requieren pruebas en Cloudflare; no se deducen de localhost.

@@ -38,11 +38,15 @@ import {
   Leaf,
   Music,
   Scale,
+  LogOut,
 } from "lucide-react";
 import { Button, Dialog, Empty, Toast, SelectField } from "./components/ui";
 import { TripEditor } from "./components/TripEditor";
 import { CoastArt, JourneyArt, VisitArt } from "./components/Artwork";
 import { FoodPhoto } from "./components/FoodPhoto";
+import { Logo } from "./components/Logo";
+import { useNotebook } from "./useNotebook";
+import { api } from "./api";
 import {
   initialTrip,
   visits,
@@ -78,28 +82,36 @@ const currentPage = (): Page =>
   pages.includes(location.hash.slice(1) as Page)
     ? (location.hash.slice(1) as Page)
     : "viajes";
-function Logo() {
-  return (
-    <span className="brand">
-      <svg viewBox="0 0 40 44" aria-hidden="true">
-        <path
-          d="M6 40V19a14 14 0 0 1 28 0v21M13 40V19a7 7 0 0 1 14 0v21"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.3"
-        />
-        <path d="M3 40h34" stroke="currentColor" strokeWidth="2.3" />
-      </svg>
-      <span>
-        itinera<span className="brand-dot">.</span>
-      </span>
-    </span>
-  );
-}
-export default function App() {
+export default function App({
+  username,
+  onExpired,
+  onLogout,
+}: {
+  username: string;
+  onExpired: () => void;
+  onLogout: () => void;
+}) {
+  const notebook = useNotebook(onExpired);
+  const { trips, active, provider } = notebook.data;
+  const setTrips = (next: Trip[] | ((current: Trip[]) => Trip[])) =>
+    notebook.change((data) => {
+      const trips = typeof next === "function" ? next(data.trips) : next;
+      return {
+        ...data,
+        trips,
+        active: trips.some((t) => t.id === data.active)
+          ? data.active
+          : (trips[0]?.id ?? ""),
+      };
+    });
+  const setActive = (active: string) =>
+    notebook.change((data) => ({ ...data, active }));
+  const setProvider = (provider: string) =>
+    notebook.change((data) => ({ ...data, provider }));
   const [page, setPage] = useState<Page>(currentPage);
-  const [trips, setTrips] = useState<Trip[]>([structuredClone(initialTrip)]);
-  const [active, setActive] = useState(initialTrip.id);
+  const [mutationBusy, setMutationBusy] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [reloadConfirm, setReloadConfirm] = useState(false);
   const trip = trips.find((t) => t.id === active) ?? trips[0];
   const [theme, setTheme] = useState(
     document.documentElement.dataset.theme ?? "light",
@@ -108,12 +120,11 @@ export default function App() {
   const [deleting, setDeleting] = useState<Trip | null>(null);
   const [detail, setDetail] = useState<Visit | null>(null);
   const [toast, setToast] = useState("");
-  const [dirty, setDirty] = useState(false);
+  const dirty = notebook.dirty;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todo");
   const [town, setTown] = useState("Todas");
   const [day, setDay] = useState("");
-  const [provider, setProvider] = useState("OpenAI");
   const [foodTab, setFoodTab] = useState("Todos");
   const [coverage, setCoverage] = useState(false);
   const notify = (s: string) => setToast(s);
@@ -154,7 +165,6 @@ export default function App() {
   }, [dirty, editor]);
   const update = (next: Trip) => {
     setTrips((t) => t.map((x) => (x.id === next.id ? next : x)));
-    setDirty(true);
   };
   const selectVisit = (id: string) => {
     if (!trip) return;
@@ -176,9 +186,9 @@ export default function App() {
       [
         JSON.stringify(
           {
-            format: "itinera-demo-v2",
+            format: "itinera-trip-v3",
             notice:
-              "Borrador de demostración. budgetPerPerson está expresado en céntimos de euro por persona. Sin precios, horarios ni disponibilidad consultados.",
+              "Borrador de viaje. budgetPerPerson está expresado en céntimos de euro por persona. Sin precios, horarios ni disponibilidad consultados.",
             trip,
           },
           null,
@@ -292,6 +302,23 @@ export default function App() {
       </div>
     </article>
   );
+  if (!notebook.ready)
+    return (
+      <main className="connection-screen">
+        <Logo />
+        <h1>
+          {notebook.error
+            ? "Tu cuaderno está esperando."
+            : "Abriendo tus viajes…"}
+        </h1>
+        <p role="status">
+          {notebook.error || "Cargando el cuaderno guardado."}
+        </p>
+        {notebook.error && (
+          <Button onClick={notebook.retry}>Volver a intentar</Button>
+        )}
+      </main>
+    );
   return (
     <div className="app">
       <a
@@ -352,7 +379,7 @@ export default function App() {
             <span className="avatar">T</span>
             <div>
               <strong>Tu espacio personal</strong>
-              <small>Vista de demostración</small>
+              <small>Sesión de {username}</small>
             </div>
           </div>
         </div>
@@ -371,8 +398,33 @@ export default function App() {
           <div className="topbar-actions">
             <span className="demo-pill">
               <span />
-              Demo interactiva
+              Acceso privado
             </span>
+            <Button
+              variant="ghost"
+              disabled={logoutBusy || mutationBusy}
+              onClick={async () => {
+                setLogoutBusy(true);
+                try {
+                  await notebook.flush();
+                  await api("/api/auth/sign-out", {
+                    method: "POST",
+                    body: "{}",
+                  });
+                  const channel = new BroadcastChannel("itinera-session");
+                  channel.postMessage("logout");
+                  channel.close();
+                  onLogout();
+                } catch (e) {
+                  notify((e as Error).message);
+                } finally {
+                  setLogoutBusy(false);
+                }
+              }}
+            >
+              <LogOut size={17} />
+              {logoutBusy ? "Saliendo…" : "Cerrar sesión"}
+            </Button>
             <button
               className="theme-toggle"
               aria-label={`Activar modo ${theme === "light" ? "oscuro" : "claro"}`}
@@ -382,12 +434,56 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main id="main">
+        <main id="main" inert={mutationBusy || logoutBusy}>
+          <div className="save-status" role="status" aria-live="polite">
+            {notebook.state === "saved"
+              ? "Guardado en el servidor"
+              : notebook.state === "saving"
+                ? "Guardando…"
+                : notebook.state === "pending"
+                  ? "Cambios pendientes de guardar"
+                  : notebook.error}
+            {["error", "expired"].includes(notebook.state) && (
+              <Button onClick={notebook.retry}>Volver a intentar</Button>
+            )}
+            {notebook.state === "conflict" && (
+              <>
+                <Button
+                  onClick={() => {
+                    const blob = new Blob(
+                      [
+                        JSON.stringify(
+                          {
+                            format: "itinera-notebook-v1",
+                            data: notebook.data,
+                          },
+                          null,
+                          2,
+                        ),
+                      ],
+                      { type: "application/json" },
+                    );
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = "itinera-cambios-pendientes.json";
+                    link.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  }}
+                >
+                  Exportar mis cambios
+                </Button>
+                <Button onClick={() => setReloadConfirm(true)}>
+                  Cargar versión guardada
+                </Button>
+              </>
+            )}
+          </div>
           <div className="demo-notice">
             <Info size={15} />
             <span>
-              Un viaje de ejemplo para explorar. Datos sin consultar y cambios
-              temporales en esta pestaña.
+              Tus cambios se guardan en el servidor. Las visitas y los precios
+              siguen pendientes de investigación.
             </span>
             <a href="#ajustes">
               Qué está conectado
@@ -568,7 +664,7 @@ export default function App() {
                   <h2>
                     En tu cuaderno <span className="count">{trips.length}</span>
                   </h2>
-                  <span className="muted">Borradores de esta sesión</span>
+                  <span className="muted">Tus viajes guardados</span>
                 </div>
                 <div className="saved-list">
                   {trips.map((t) => (
@@ -1321,7 +1417,7 @@ export default function App() {
                         onClick={() => {
                           setProvider(p);
                           notify(
-                            `Preferencia temporal: ${p}. No se ha iniciado ninguna conexión.`,
+                            `Preferencia: ${p}. No se ha iniciado ninguna conexión.`,
                           );
                         }}
                       >
@@ -1354,7 +1450,7 @@ export default function App() {
                     <strong>Ninguna</strong>
                   </div>
                   <div className="connection-row">
-                    <span>Consumo de esta demo</span>
+                    <span>Llamadas a la IA</span>
                     <strong>0 llamadas</strong>
                   </div>
                 </section>
@@ -1365,8 +1461,8 @@ export default function App() {
                       <Sun size={21} />
                     </div>
                     <p>
-                      El tema es la única preferencia que guardamos en este
-                      navegador.
+                      El tema se guarda en este navegador. El proveedor
+                      preferido se guarda con tu cuaderno.
                     </p>
                     <div className="theme-options">
                       <Button
@@ -1393,17 +1489,17 @@ export default function App() {
                       <ShieldCheck size={21} />
                     </div>
                     <p>
-                      Esta demo no tiene cuenta ni acceso privado. Antes de
-                      publicarla con tus datos, conectaremos la autenticación y
-                      el guardado en Cloudflare.
+                      Has entrado como {username}. La sesión finaliza a las dos
+                      horas. Cierra la sesión al terminar en un equipo
+                      compartido.
                     </p>
                     <div className="connection-row">
                       <span>Acceso privado</span>
-                      <span className="badge">Pendiente</span>
+                      <span className="badge">Activo</span>
                     </div>
                     <div className="connection-row">
-                      <span>Guardado en la nube</span>
-                      <span className="badge">Pendiente</span>
+                      <span>Guardado en el servidor</span>
+                      <span className="badge">Activo</span>
                     </div>
                     {trip && (
                       <Button onClick={exportTrip}>
@@ -1417,9 +1513,9 @@ export default function App() {
               <div className="notice">
                 <Info size={17} />
                 <span>
-                  Los viajes y las preferencias de IA viven solo en esta
-                  pestaña. Recargar vuelve al ejemplo inicial. No introduzcas
-                  claves ni datos sensibles.
+                  Los viajes y la preferencia de IA se conservan en el servidor.
+                  Las claves de IA se configurarán allí cuando conectemos el
+                  modelo.
                 </span>
               </div>
             </>
@@ -1428,51 +1524,112 @@ export default function App() {
             <span>
               <Logo /> <span>Para viajar con curiosidad.</span>
             </span>
-            <span>Tu cuaderno de viaje · Esqueleto 01</span>
+            <span>Tu cuaderno de viaje · Itinera</span>
           </footer>
         </main>
       </div>
+      {reloadConfirm && (
+        <Dialog
+          title="¿Cargar la versión guardada?"
+          onClose={() => setReloadConfirm(false)}
+        >
+          <p>
+            Se sustituirán los cambios pendientes de esta pestaña por el
+            cuaderno del servidor. Exporta tus cambios antes de continuar.
+          </p>
+          <div className="dialog-actions">
+            <Button autoFocus onClick={() => setReloadConfirm(false)}>
+              Conservar mis cambios
+            </Button>
+            <Button
+              onClick={() => {
+                setReloadConfirm(false);
+                void notebook.load();
+              }}
+            >
+              Cargar versión guardada
+            </Button>
+          </div>
+        </Dialog>
+      )}
       {editor && (
         <TripEditor
           trip={editor === "new" ? undefined : editor}
           onClose={() => setEditor(null)}
-          onSave={(next) => {
-            if (editor === "new") {
-              setTrips([...trips, next]);
-              setActive(next.id);
-            } else update(next);
-            setDirty(true);
-            setEditor(null);
-            setDay("");
-            go("itinerario");
-            notify("Borrador actualizado en esta pestaña. Puedes exportarlo.");
+          onSave={async (next) => {
+            setMutationBusy(true);
+            try {
+              await notebook.commit((data) => ({
+                ...data,
+                trips:
+                  editor === "new"
+                    ? [...data.trips, next]
+                    : data.trips.map((t) => (t.id === next.id ? next : t)),
+                active: next.id,
+              }));
+              setEditor(null);
+              setDay("");
+              go("itinerario");
+              notify("Viaje guardado en el servidor.");
+            } finally {
+              setMutationBusy(false);
+            }
           }}
         />
       )}
       {deleting && (
         <Dialog
           title="¿Eliminar este borrador?"
-          onClose={() => setDeleting(null)}
+          onClose={() => {
+            if (!mutationBusy) setDeleting(null);
+          }}
         >
           <p>
-            Se eliminará <strong>{deleting.destination}</strong> de esta
-            pestaña. Sus selecciones y cambios no se podrán recuperar desde la
+            Se eliminará <strong>{deleting.destination}</strong> de tu cuaderno
+            guardado. Sus selecciones y cambios no se podrán recuperar desde la
             aplicación.
           </p>
+          {notebook.error && (
+            <p className="notice" role="alert">
+              {notebook.error}
+            </p>
+          )}
           <div className="dialog-actions">
-            <Button autoFocus onClick={() => setDeleting(null)}>
+            <Button
+              autoFocus
+              disabled={mutationBusy}
+              onClick={() => setDeleting(null)}
+            >
               Conservar viaje
             </Button>
             <Button
               variant="danger"
-              onClick={() => {
-                setTrips(trips.filter((t) => t.id !== deleting.id));
-                setDeleting(null);
-                setDirty(true);
-                notify("Borrador eliminado de esta pestaña.");
-                requestAnimationFrame(() =>
-                  document.getElementById("page-title")?.focus(),
-                );
+              disabled={mutationBusy}
+              aria-busy={mutationBusy}
+              onClick={async () => {
+                setMutationBusy(true);
+                try {
+                  await notebook.commit((data) => {
+                    const trips = data.trips.filter(
+                      (t) => t.id !== deleting.id,
+                    );
+                    return {
+                      ...data,
+                      trips,
+                      active: trips.some((t) => t.id === data.active)
+                        ? data.active
+                        : (trips[0]?.id ?? ""),
+                    };
+                  });
+                  setDeleting(null);
+                  notify("Viaje eliminado del cuaderno.");
+                  requestAnimationFrame(() =>
+                    document.getElementById("page-title")?.focus(),
+                  );
+                } catch {
+                } finally {
+                  setMutationBusy(false);
+                }
               }}
             >
               Eliminar borrador

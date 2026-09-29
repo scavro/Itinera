@@ -1,12 +1,14 @@
 import {
   useEffect,
   useRef,
+  useContext,
   type ReactNode,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
 } from "react";
 import { X, Compass } from "lucide-react";
+import { SessionBlocked } from "../sessionContext";
 export function Button({
   children,
   variant = "secondary",
@@ -19,6 +21,7 @@ export function Button({
   return (
     <button
       {...props}
+      data-initial-focus={props.autoFocus || undefined}
       onClick={onClick}
       className={`button ${variant} ${className}`}
     >
@@ -41,6 +44,7 @@ export function Field({
       <label htmlFor={id}>{label}</label>
       <input
         {...props}
+        data-initial-focus={props.autoFocus || undefined}
         id={id}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
@@ -78,18 +82,25 @@ export function Dialog({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const previous = useRef(document.activeElement as HTMLElement);
+  const suspended = useContext(SessionBlocked);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement;
-    ref.current?.showModal();
+    if (suspended) {
+      ref.current?.close();
+      return;
+    }
+    if (!ref.current?.open) ref.current?.showModal();
+    ref.current?.querySelector<HTMLElement>("[data-initial-focus]")?.focus();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
+      ref.current?.close();
       document.body.style.overflow = overflow;
-      previous?.focus();
+      previous.current?.focus();
     };
-  }, []);
+  }, [suspended]);
   return (
     <dialog
       ref={ref}

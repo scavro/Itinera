@@ -1,6 +1,6 @@
 # Plan del asistente personal de viajes
 
-Fecha: 29 de septiembre de 2026. Estado: esqueleto interactivo local implementado y verificado; autenticación, D1, Worker, conexiones de IA/fuentes y despliegue pendientes. Véanse `README.md` y `docs/VERIFICATION.md`.
+Fecha: 29 de septiembre de 2026. Estado: esqueleto y acceso privado con Worker/D1 implementados y verificados localmente. Despliegue, aceptación remota y CPU en Free pendientes; conexiones de IA/fuentes aún sin implementar. Véanse `README.md` y `docs/VERIFICATION.md`.
 
 ## Objetivo y alcance acordado
 
@@ -74,7 +74,7 @@ Requisito: solo el propietario puede entrar, sin depender de su PC y sin registr
 
 Decisión del usuario: nombre de usuario y contraseña exclusivos de Itinera, con una experiencia sencilla para un único propietario. No se requiere una cuenta Google ni Cloudflare para entrar en la web.
 
-Antes de implementar, se evaluará una solución de autenticación mantenida compatible con Workers y su coste gratuito. Incluirá contraseña almacenada con un hash adecuado, sesiones revocables mediante cookies HttpOnly/Secure y protección frente a intentos repetidos, y demostrará su encaje en el límite de CPU. El alta inicial y la recuperación de acceso se resolverán mediante administración, sin añadir registro público ni un servicio de correo al MVP. Las credenciales nunca se incluirán en GitHub.
+Implementado con Better Auth 1.7.6 y D1: contraseña scrypt nativa (N=16384, r=16, p=1), sesiones revocables de dos horas, cookies HttpOnly/Secure en HTTPS y cinco intentos de login por IP cada cinco minutos. El servidor solo permite la identidad `owner` y los endpoints de entrada/salida. El alta y recuperación se realizan con `owner:local` o `owner:remote`, con contraseña oculta en terminal. Las credenciales nunca se incluyen en GitHub. La integración local está probada; todavía hay que medir CPU en el plan Free real antes de aceptar su viabilidad remota.
 
 La identidad se verificará en servidor antes de entregar páginas privadas, datos o exportaciones. Las URLs alternativas y previsualizaciones deben quedar protegidas o desactivadas. Las peticiones que modifican datos verificarán el origen. El Worker debe ejecutarse antes de servir los archivos privados de la interfaz.
 
@@ -158,7 +158,7 @@ La prueba de aceptación medirá CPU y uso en Cloudflare real. Si alguna funció
 
 1. **Especificación y viabilidad:** fijar pantallas, contrato de evidencias y criterios de prueba. Variante de acceso elegida: usuario y contraseña propios. Validar una fuente real y el proveedor de IA elegido.
 2. **Esqueleto funcional:** interfaz móvil, viajes editables, presupuesto por código, almacenamiento y escenario ficticio reproducible. Datos de ejemplo identificados como demostración.
-3. **Cloudflare y privacidad:** entorno de prueba protegido, D1 remoto, secretos y login. Probar acceso permitido/denegado y persistencia entre dispositivos.
+3. **Cloudflare y privacidad:** Worker, login, D1 local, persistencia, conflictos y recuperación de sesión implementados y probados. Pendientes D1 remota, secreto/usuario de producción, despliegue, persistencia entre dispositivos y medición Free. Pasos en `docs/DEPLOYMENT.md`; requiere renovar la autorización de Cloudflare.
 4. **IA, cultura y gastronomía:** conectar el proveedor elegido, herramientas de viaje y fuentes; preparar los adaptadores opcionales sin exigir otras claves. Incorporar Visitas y Cultura, cobertura de agendas, fichas culinarias por país y región y selección de un único modelo activo. Los otros adaptadores solo se validan en vivo cuando se decida usarlos y se disponga de sus credenciales.
 5. **Verificación:** observaciones con evidencia, estados, discrepancias, caducidad, recálculo y «Comprobar ahora». Añadir conectores de ofertas conforme superen la prueba de viabilidad.
 6. **Prueba integral y publicación privada:** viaje ficticio con fuentes reales, navegación móvil y desde otro equipo, medición del plan Free y aceptación visual del usuario.

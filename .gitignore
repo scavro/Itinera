@@ -4,3 +4,6 @@ dist/
 .env*
 .wrangler/
 *.tsbuildinfo
+.worker-build/
+.dev.vars.*
+wrangler.local.jsonc

@@ -4,29 +4,46 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "tsc -b && vite build",
+    "dev": "npm run build && wrangler dev --local --port 8787",
+    "build": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit",
     "test": "vitest run",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" src/styles.css index.html package.json premium-ui.json tsconfig.json DESIGN.md UX-CONTRACT.md",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" src/styles.css index.html package.json premium-ui.json tsconfig.json DESIGN.md UX-CONTRACT.md",
-    "tokens": "node scripts/generate-tokens.mjs --check"
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"server/**/*.ts\" \"scripts/*.mjs\" \"tests/*.mjs\" src/styles.css vite.config.ts .prettierrc.json index.html package.json premium-ui.json tsconfig*.json wrangler.jsonc DESIGN.md UX-CONTRACT.md",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"server/**/*.ts\" \"scripts/*.mjs\" \"tests/*.mjs\" src/styles.css vite.config.ts .prettierrc.json index.html package.json premium-ui.json tsconfig*.json wrangler.jsonc DESIGN.md UX-CONTRACT.md",
+    "tokens": "node scripts/generate-tokens.mjs --check",
+    "dev:worker": "wrangler dev --local --port 8787",
+    "db:local": "wrangler d1 migrations apply itinera --local",
+    "db:remote": "wrangler d1 migrations apply itinera --remote --env production",
+    "owner:local": "node scripts/owner.mjs",
+    "owner:remote": "node scripts/owner.mjs --remote",
+    "deploy": "npm run build && node scripts/deploy.mjs",
+    "cf:types": "wrangler types worker-configuration.d.ts --strict-vars=false",
+    "cf:check": "wrangler deploy --env=\"\" --dry-run --outdir .worker-build",
+    "test:integration": "node tests/integration.mjs"
   },
   "dependencies": {
+    "@fontsource/dm-sans": "^5.2.0",
+    "@fontsource/newsreader": "^5.2.0",
+    "better-auth": "1.7.6",
+    "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "lucide-react": "^0.468.0",
-    "@fontsource/dm-sans": "^5.2.0",
-    "@fontsource/newsreader": "^5.2.0"
+    "zod": "4.6.5"
   },
   "devDependencies": {
+    "@types/node": "26.6.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "miniflare": "5.20260926.1-alpha",
+    "prettier": "^3.6.0",
     "typescript": "^5.9.0",
     "vite": "^7.1.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "vitest": "^3.2.0",
-    "prettier": "^3.6.0"
+    "vitest": "4.1.11",
+    "wrangler": "4.143.1"
+  },
+  "engines": {
+    "node": ">=24.20.0"
   }
 }

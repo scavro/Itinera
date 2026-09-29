@@ -58,7 +58,7 @@ Newsreader en títulos; DM Sans en controles y lectura. Cifras tabulares en pres
 
 ## Layout
 
-Sidebar de 236 px desde 1100 px, navegación horizontal compacta debajo. Contenido hasta 76 rem. A 700 px, tarjetas, formulario y composición principal pasan a una columna. Scroll vertical del documento; únicamente diálogos tienen scroll interno. Los controles importantes tienen al menos 44 px. Márgenes fluidos 20–44 px, separación de secciones 32 px. Sin tablas en esta versión.
+Sidebar de 236 px desde 1100 px, navegación horizontal compacta debajo. Contenido hasta 76 rem. A 700 px, tarjetas, formulario y composición principal pasan a una columna. Scroll vertical del documento; diálogos y la sidebar fija de escritorio pueden desplazarse internamente para mantener accesibles todos los controles en pantallas bajas. Los controles importantes tienen al menos 44 px. Márgenes fluidos 20–44 px, separación de secciones 32 px. Sin tablas en esta versión.
 
 ## Elevation & Depth
 
@@ -70,11 +70,11 @@ Controles 12 px, tarjetas 20 px. Píldoras para estados y filtros, no para toda 
 
 ## Components
 
-Button, Field, Dialog, Empty y Toast viven en `src/components/ui.tsx`. Hover tonal, foco visible, pulsación breve, disabled con texto explicativo adyacente, error con texto y asociación. No hay trabajos remotos ni falsas barras de progreso en la demo. Select y fecha nativos: se acepta geometría y locale del navegador/OS. Diálogo nativo `showModal`, fondo inerte, Escape, restauración de foco. Transición de entrada 180 ms, desactivada con reduced motion. Scrollbars globales con thumb/track/hover/active y fallback WebKit. Datos orientativos siempre identificados; sin restaurantes. En gastronomía se usan fotografías identificadas y acreditadas para que el plato sea reconocible.
+Button, Field, Dialog, Empty y Toast viven en `src/components/ui.tsx`. Hover tonal, foco visible, pulsación breve, disabled con texto explicativo adyacente, error con texto y asociación. El acceso reutiliza Logo, Field y Button, con el paisaje a la izquierda en escritorio y formulario en una columna en móvil. Login, estados de red, sesión y guardado usan texto explícito; no hay falsas barras de progreso. El contraste del texto sobre la parte clara del paisaje utiliza el verde primario. Select y fecha nativos: se acepta geometría y locale del navegador/OS. Diálogo nativo `showModal`, fondo inerte, Escape, restauración de foco. Transición de entrada 180 ms, desactivada con reduced motion. Scrollbars globales con thumb/track/hover/active y fallback WebKit. Datos orientativos siempre identificados; sin restaurantes. En gastronomía se usan fotografías identificadas y acreditadas para que el plato sea reconocible.
 
 ## Do's and Don'ts
 
 - Mantener el itinerario y sus fuentes por delante de estadísticas ornamentales.
 - Usar los mismos estados y acciones en todas las tarjetas culturales.
-- No aparentar autenticación ni consultas reales en la demo.
+- El acceso y el guardado son reales; distinguirlos de la investigación cultural, precios y modelos aún sin conectar.
 - No usar imágenes de destinos como evidencia de disponibilidad.

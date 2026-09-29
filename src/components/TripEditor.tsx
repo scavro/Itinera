@@ -15,7 +15,7 @@ export function TripEditor({
 }: {
   trip?: Trip;
   onClose: () => void;
-  onSave: (trip: Trip) => void;
+  onSave: (trip: Trip) => Promise<void>;
 }) {
   const initial: Draft = {
     destination: trip?.destination ?? "",
@@ -31,9 +31,16 @@ export function TripEditor({
   const [errors, setErrors] = useState<Partial<Record<keyof Draft, string>>>(
     {},
   );
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [discard, setDiscard] = useState(false);
   const dirty = JSON.stringify(initial) !== JSON.stringify(draft);
-  const close = () => (dirty ? setDiscard(true) : onClose());
+  const close = () => {
+    if (!busy) {
+      if (dirty) setDiscard(true);
+      else onClose();
+    }
+  };
   const set = (key: keyof Draft, value: string) =>
     setDraft({ ...draft, [key]: value });
   return (
@@ -65,40 +72,49 @@ export function TripEditor({
       ) : (
         <form
           noValidate
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
+            if (busy) return;
             const e = validateTrip(draft);
             setErrors(e);
             if (Object.keys(e).length) {
               document.getElementById(Object.keys(e)[0])?.focus();
               return;
             }
-            onSave({
-              id: trip?.id ?? crypto.randomUUID(),
-              destination: draft.destination.trim(),
-              origin: draft.origin.trim(),
-              start: draft.start,
-              end: draft.end,
-              pace: draft.pace,
-              notes: draft.notes,
-              budgetPerPerson: Math.round(
-                Number(draft.budget.replace(",", ".")) * 100,
-              ),
-              travelers: Number(draft.travelers),
-              selected: trip?.selected ?? [],
-              interested: trip?.interested ?? [],
-              tasted: trip?.tasted ?? [],
-              foodInterested: trip?.foodInterested ?? [],
-              checked: trip?.checked ?? [],
-              days: trip ? updateTripDates(trip, draft.start, draft.end) : {},
-              demo: trip?.demo ?? false,
-            });
+            setBusy(true);
+            setSaveError("");
+            try {
+              await onSave({
+                id: trip?.id ?? crypto.randomUUID(),
+                destination: draft.destination.trim(),
+                origin: draft.origin.trim(),
+                start: draft.start,
+                end: draft.end,
+                pace: draft.pace,
+                notes: draft.notes,
+                budgetPerPerson: Math.round(
+                  Number(draft.budget.replace(",", ".")) * 100,
+                ),
+                travelers: Number(draft.travelers),
+                selected: trip?.selected ?? [],
+                interested: trip?.interested ?? [],
+                tasted: trip?.tasted ?? [],
+                foodInterested: trip?.foodInterested ?? [],
+                checked: trip?.checked ?? [],
+                days: trip ? updateTripDates(trip, draft.start, draft.end) : {},
+                demo: trip?.demo ?? false,
+              });
+            } catch (e) {
+              setSaveError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           <p className="muted">
             Dale forma a la idea. Podrás ajustar cada detalle después.
           </p>
-          <div className="form-grid">
+          <fieldset className="form-grid editor-fields" disabled={busy}>
             <Field
               id="destination"
               label="Destino o región"
@@ -189,16 +205,25 @@ export function TripEditor({
                 placeholder="Una exposición, un lugar, una idea…"
               />
             </div>
-          </div>
-          <div className="notice compact">
-            Borrador temporal en esta pestaña. Exporta el viaje antes de cerrar.
+          </fieldset>
+          <div className="notice compact" role="status">
+            {saveError || "El viaje se guardará en tu cuaderno del servidor."}
           </div>
           <div className="dialog-actions">
-            <Button type="button" onClick={close}>
+            <Button type="button" onClick={close} disabled={busy}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit">
-              {trip ? "Aplicar cambios" : "Crear borrador"}
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={busy}
+              aria-busy={busy}
+            >
+              {busy
+                ? "Guardando…"
+                : trip
+                  ? "Aplicar cambios"
+                  : "Crear borrador"}
               <ArrowRight size={17} />
             </Button>
           </div>

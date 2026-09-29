@@ -1,20 +1,48 @@
-# Itinera · esqueleto interactivo
+# Itinera · cuaderno privado de viajes
 
-Web personal de viajes y cultura. Incluye un viaje **ficticio** a Puglia para probar navegación, formularios, itinerario, preferencias culturales, platos típicos con fotografías reales acreditadas, modo claro/oscuro y vista móvil. El fondo del tema claro es crema. El presupuesto introducido es el **total por persona**; la aplicación calcula aparte el importe conjunto de los viajeros.
+Web personal de viajes y cultura, responsive, con temas verde/crema y oscuro. Presupuesto total **por persona**, con total del grupo calculado aparte. El ejemplo de Puglia es ficticio: no acredita horarios, precios ni disponibilidad.
+
+## Fase implementada
+
+Acceso con un único usuario y contraseña, sin registro público. Worker antes de los archivos privados; Better Auth, cookies de sesión y D1. Viajes, itinerarios, selecciones y proveedor preferido se guardan en el servidor. La sesión dura dos horas y el cierre la revoca. Un conflicto entre pestañas permite exportar los cambios y cargar la versión guardada.
+
+**Verificado localmente** con Workers y D1. El despliegue remoto, la medición de CPU en Cloudflare Free y la entrada desde otro dispositivo siguen pendientes. IA, agendas, precios y disponibilidad todavía no están conectados. OpenAI/Gemini/OpenCode Go son opciones de preferencia, sin llamadas ni gasto; Go requiere confirmar compatibilidad de uso.
 
 ## Ejecutar en el ordenador
 
+Requiere Node.js 24.20 o superior. No basta abrir el frontend de Vite: el acceso se comprueba en el Worker.
+
 ```bash
 npm ci
+umask 077
+node -e "console.log('BETTER_AUTH_SECRET='+require('node:crypto').randomBytes(32).toString('hex'))" > .dev.vars
+npm run db:local
+npm run owner:local
 npm run dev
 ```
 
-Abrir `http://127.0.0.1:5173/`. Requiere Node.js 20.19 o superior. Para compilar: `npm run build`. El esqueleto no envía datos ni realiza consultas de IA. Los viajes se mantienen únicamente mientras la pestaña siga abierta; «Exportar» descarga un JSON de demostración (`itinera-demo-v2`, importe por persona en céntimos). Una portada nueva muestra un paisaje genérico hasta disponer de una imagen documentada de ese destino.
+Abrir [http://127.0.0.1:8787/](http://127.0.0.1:8787/). `owner:local` pide usuario y contraseña en la terminal, con entrada oculta; no hay credenciales predeterminadas. Ejecutarlo de nuevo cambia el acceso y revoca las sesiones anteriores, conservando los viajes. `.dev.vars` y `.wrangler` están excluidos de Git. No regenerar el secreto al arrancar habitualmente: se crea una sola vez.
 
-## Estado real de las conexiones
+`npm run build` compila. `npm run dev:worker` inicia el servidor con los archivos ya compilados. Solo el tema se guarda en localStorage; viajes y claves no. Un cambio pendiente puede perderse al cerrar la pestaña: esperar a «Guardado en el servidor» o exportarlo.
 
-Pendientes: acceso privado con un único usuario y contraseña propios, D1, Worker, APIs de IA, buscador y fuentes de precios/agenda. La selección OpenAI/Gemini/OpenCode Go en Ajustes es una preferencia temporal, sin claves ni llamadas. OpenCode Go requiere confirmar que el servicio permite usarlo para viajes. El despliegue público de este front sin autenticación expondría los datos de ejemplo y no cumpliría el requisito de privacidad; no hay configuración de despliegue activa. La siguiente fase preparará Worker, login y persistencia antes de conectar GitHub con Workers Builds.
+## Cloudflare y GitHub
 
-El alcance acordado y las fases siguientes están en [PLAN.md](PLAN.md). La identidad visual está en [DESIGN.md](DESIGN.md), las decisiones de interacción en [UX-CONTRACT.md](UX-CONTRACT.md) y las verificaciones en [docs/VERIFICATION.md](docs/VERIFICATION.md).
+Seguir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para D1 remoto, secreto de sesión, usuario propio y Workers Builds. El repositorio puede ser público; la contraseña y el secreto nunca se incluyen. No publicar `dist` como un sitio estático independiente: debe servirse a través del Worker protegido.
 
-Las fotografías culinarias del ejemplo tienen [créditos y licencias](public/assets/food/CREDITS.md). Para visitas y monumentos, las ilustraciones de esta demo se sustituirán por fotografías identificadas del lugar en la fase de investigación de fuentes.
+## Comprobaciones
+
+```bash
+npm run typecheck
+npm test
+npm run build
+npm run cf:check
+npm run test:integration
+npm run format:check
+npm run tokens
+```
+
+La integración usa una D1 aislada y credenciales aleatorias de prueba; no necesita cuenta Cloudflare. `tests/browser-fixture.mjs` es exclusivamente una utilidad de QA local: sustituye el acceso local por una cuenta desechable, nunca actúa sobre producción.
+
+Alcance y fases: [PLAN.md](PLAN.md). Identidad visual: [DESIGN.md](DESIGN.md). Interacción: [UX-CONTRACT.md](UX-CONTRACT.md). Evidencia y límites: [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+Las fotografías culinarias tienen [créditos y licencias](public/assets/food/CREDITS.md). No se recomiendan restaurantes. Las visitas mantienen ilustraciones de ejemplo hasta incorporar fotos verificadas de cada lugar. Los destinos nuevos muestran un paisaje genérico de inspiración.
