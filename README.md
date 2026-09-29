@@ -13,7 +13,7 @@ Abrir `http://127.0.0.1:5173/`. Requiere Node.js 20.19 o superior. Para compilar
 
 ## Estado real de las conexiones
 
-Pendientes: acceso privado, D1, Worker, APIs de IA, buscador y fuentes de precios/agenda. La selección OpenAI/Gemini/OpenCode Go en Ajustes es una preferencia temporal, sin claves ni llamadas. OpenCode Go requiere confirmar que el servicio permite usarlo para viajes. El despliegue público de este front sin Access expondría los datos de ejemplo y no cumpliría el requisito de privacidad; no hay configuración de despliegue activa.
+Pendientes: acceso privado con un único usuario y contraseña propios, D1, Worker, APIs de IA, buscador y fuentes de precios/agenda. La selección OpenAI/Gemini/OpenCode Go en Ajustes es una preferencia temporal, sin claves ni llamadas. OpenCode Go requiere confirmar que el servicio permite usarlo para viajes. El despliegue público de este front sin autenticación expondría los datos de ejemplo y no cumpliría el requisito de privacidad; no hay configuración de despliegue activa. La siguiente fase preparará Worker, login y persistencia antes de conectar GitHub con Workers Builds.
 
 El alcance acordado y las fases siguientes están en [PLAN.md](PLAN.md). La identidad visual está en [DESIGN.md](DESIGN.md), las decisiones de interacción en [UX-CONTRACT.md](UX-CONTRACT.md) y las verificaciones en [docs/VERIFICATION.md](docs/VERIFICATION.md).
 

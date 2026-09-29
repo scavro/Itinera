@@ -60,8 +60,9 @@ Una función anunciada no acredita entradas disponibles. Comprobar venta, locali
 - API y coordinación de herramientas en un Cloudflare Worker TypeScript. Sustituye la propuesta inicial de servidor Python/FastAPI.
 - Cloudflare D1 para viajes, preferencias, mensajes, alternativas, itinerarios, visitas, eventos culturales, cobertura de agendas, gastronomía, evidencias y consumo.
 - Workers Secrets para claves de modelos y proveedores de datos. Configuración inicial mediante Cloudflare; el selector web utiliza únicamente conexiones ya configuradas.
-- Cloudflare Access como propuesta de acceso privado. Se protegerán interfaz, API, exportaciones y rutas de previsualización.
-- Dirección inicial workers.dev protegida por Access; dominio propio opcional y con coste independiente si hay que comprarlo.
+- Acceso propio de la aplicación con un único nombre de usuario y contraseña, sin registro público. Se protegerán interfaz, API, exportaciones y rutas de previsualización.
+- Dirección inicial workers.dev protegida por la autenticación de la aplicación; dominio propio opcional y con coste independiente si hay que comprarlo.
+- Despliegue mediante Workers Builds conectado al repositorio GitHub `scavro/Itinera`. Preparar y probar el Worker, la autenticación y la configuración de D1 antes del primer despliegue privado.
 
 Las tareas de investigación se dividirán en pasos cortos, con límites de llamadas y resultados parciales guardados. Un cierre de navegador conserva los resultados ya confirmados; el MVP reanuda la investigación al volver, sin prometer que continúa ejecutándose en segundo plano. Las operaciones se identificarán para evitar duplicar escrituras o llamadas ante reintentos.
 
@@ -71,11 +72,11 @@ Se limitarán respuestas externas, tamaño de contexto y rondas de herramientas.
 
 Requisito: solo el propietario puede entrar, sin depender de su PC y sin registro público.
 
-Recomendación: Access con una identidad admitida de forma explícita. Puede usar las credenciales de Cloudflare o una cuenta Google configurada como proveedor. El usuario introduce sus credenciales en ese proveedor y Access autoriza exclusivamente su identidad. Esto cumple el acceso privado, pero no crea una contraseña independiente para la web de viajes.
+Decisión del usuario: nombre de usuario y contraseña exclusivos de Itinera, con una experiencia sencilla para un único propietario. No se requiere una cuenta Google ni Cloudflare para entrar en la web.
 
-Decisión pendiente antes de implementar el acceso: credenciales existentes mediante Access, o usuario y contraseña exclusivos de esta aplicación. Si se elige lo segundo, se evaluará una solución de autenticación mantenida compatible con Workers y su coste gratuito; no se sustituirá por un formulario que solo oculte la interfaz. Deberá incluir contraseña almacenada con un hash adecuado, sesiones revocables y protección frente a intentos repetidos, y demostrar su encaje en el límite de CPU.
+Antes de implementar, se evaluará una solución de autenticación mantenida compatible con Workers y su coste gratuito. Incluirá contraseña almacenada con un hash adecuado, sesiones revocables mediante cookies HttpOnly/Secure y protección frente a intentos repetidos, y demostrará su encaje en el límite de CPU. El alta inicial y la recuperación de acceso se resolverán mediante administración, sin añadir registro público ni un servicio de correo al MVP. Las credenciales nunca se incluirán en GitHub.
 
-Con Access: política restringida al correo/identidad exactos, denegación del resto y validación de identidad autenticada en servidor. No se aceptarán cabeceras de identidad arbitrarias del navegador. Las URLs alternativas y previsualizaciones deben quedar protegidas o desactivadas. Las peticiones que modifican datos verificarán el origen.
+La identidad se verificará en servidor antes de entregar páginas privadas, datos o exportaciones. Las URLs alternativas y previsualizaciones deben quedar protegidas o desactivadas. Las peticiones que modifican datos verificarán el origen. El Worker debe ejecutarse antes de servir los archivos privados de la interfaz.
 
 Para equipos compartidos: sesión corta, cierre de sesión visible con revocación correspondiente y respuestas privadas sin caché persistente del navegador. El MVP no guardará viajes ni claves en localStorage ni ofrecerá almacenamiento offline automático. Un ordenador comprometido queda fuera de lo que puede proteger la web; se prioriza el móvil propio.
 
@@ -146,7 +147,7 @@ Documentación consultada a 29/09/2026:
 
 - Workers Free: 100.000 solicitudes diarias y 10 ms de CPU por invocación HTTP. La espera de red no cuenta como CPU. Los archivos estáticos tienen su régimen gratuito propio; ejecutar lógica de Worker sigue sujeto a sus límites.
 - D1 Free: 5 millones de filas leídas/día, 100.000 escritas/día y 5 GB totales por cuenta. Existen otros límites, incluido el tamaño por base de datos, que se revisarán al configurar.
-- Access dispone de plan gratuito. La guía actual de alta de Zero Trust pide datos de pago incluso al escoger Free, indicando que no se cobra por ese plan.
+- El acceso elegido se implementará en la aplicación; no requiere configurar Cloudflare Access. Su coste de CPU y almacenamiento se comprobará dentro de las cuotas de Workers y D1.
 - Las APIs de IA, búsqueda y ofertas tienen condiciones y costes propios. Cloudflare Free no las incluye.
 
 Se usarán índices y consultas acotadas, registro de consumo y actualizaciones bajo demanda. Se propondrá un límite diario y mensual de IA separado del presupuesto del viaje. El tope interno reservará margen antes de iniciar llamadas y limitará tokens/herramientas; la estimación de coste no sustituye a los límites de facturación disponibles en cada proveedor.
@@ -155,14 +156,14 @@ La prueba de aceptación medirá CPU y uso en Cloudflare real. Si alguna funció
 
 ## Secuencia de implementación
 
-1. **Especificación y viabilidad:** fijar pantallas, contrato de evidencias y criterios de prueba. Elegir la variante de acceso. Validar una fuente real y el proveedor de IA elegido.
+1. **Especificación y viabilidad:** fijar pantallas, contrato de evidencias y criterios de prueba. Variante de acceso elegida: usuario y contraseña propios. Validar una fuente real y el proveedor de IA elegido.
 2. **Esqueleto funcional:** interfaz móvil, viajes editables, presupuesto por código, almacenamiento y escenario ficticio reproducible. Datos de ejemplo identificados como demostración.
 3. **Cloudflare y privacidad:** entorno de prueba protegido, D1 remoto, secretos y login. Probar acceso permitido/denegado y persistencia entre dispositivos.
 4. **IA, cultura y gastronomía:** conectar el proveedor elegido, herramientas de viaje y fuentes; preparar los adaptadores opcionales sin exigir otras claves. Incorporar Visitas y Cultura, cobertura de agendas, fichas culinarias por país y región y selección de un único modelo activo. Los otros adaptadores solo se validan en vivo cuando se decida usarlos y se disponga de sus credenciales.
 5. **Verificación:** observaciones con evidencia, estados, discrepancias, caducidad, recálculo y «Comprobar ahora». Añadir conectores de ofertas conforme superen la prueba de viabilidad.
 6. **Prueba integral y publicación privada:** viaje ficticio con fuentes reales, navegación móvil y desde otro equipo, medición del plan Free y aceptación visual del usuario.
 
-Los despliegues usarán versiones recuperables. Antes de cambios de esquema se preparará exportación/recuperación de datos; volver a una versión del código no debe desproteger Access ni destruir viajes. Se documentará la restauración.
+Los despliegues usarán versiones recuperables. Antes de cambios de esquema se preparará exportación/recuperación de datos; volver a una versión del código no debe desproteger la aplicación ni destruir viajes. Se documentará la restauración.
 
 ## Prueba ficticia y criterios de aceptación
 
@@ -191,7 +192,7 @@ Primero datos controlados y después consultas reales para el mismo encargo. Se 
 
 ## Decisiones que quedan para implementar
 
-- Correo/identidad autorizada y elección entre Access con cuenta existente o contraseña exclusiva de la aplicación.
+- Nombre del único usuario y aprovisionamiento de su contraseña fuera de GitHub.
 - Primer proveedor/modelo y claves, que se configurarán como secretos.
 - Confirmación del encaje del asistente de viajes en el uso admitido por OpenCode Go antes de habilitar esa opción; la interfaz y los demás adaptadores pueden avanzar independientemente.
 - Tope de gasto de IA/búsqueda y fuentes de ofertas a las que se tenga acceso.
@@ -205,11 +206,9 @@ Estas decisiones no requieren todavía credenciales para revisar el plan ni cons
 - [Workers: precios](https://developers.cloudflare.com/workers/platform/pricing/)
 - [Workers: límites y CPU](https://developers.cloudflare.com/workers/platform/limits/)
 - [D1: precios y comportamiento al superar cuotas](https://developers.cloudflare.com/d1/platform/pricing/)
-- [Protección de workers.dev con Access](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
-- [Cloudflare como proveedor de identidad](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/cloudflare/)
-- [Google como proveedor de identidad](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/google/)
-- [Políticas de Access](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/)
-- [Alta de Zero Trust y requisito de facturación](https://developers.cloudflare.com/learning-paths/clientless-access/initial-setup/create-zero-trust-org/)
+- [Workers Builds e importación de repositorios](https://developers.cloudflare.com/workers/ci-cd/builds/)
+- [Integración con GitHub](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/)
+- [Ejecutar el Worker antes de servir archivos privados](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/)
 - [Secretos de Workers](https://developers.cloudflare.com/workers/configuration/secrets/)
 - [OpenAI: llamadas a herramientas](https://developers.openai.com/api/docs/guides/function-calling)
 - [Gemini: llamadas a herramientas](https://ai.google.dev/gemini-api/docs/function-calling)
