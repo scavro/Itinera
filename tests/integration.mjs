@@ -1,3 +1,4 @@
+import { migrationStatements } from "./migrations.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -61,17 +62,25 @@ const request = (path, options = {}) =>
     },
   });
 try {
+  assert.throws(
+    () =>
+      migrationStatements(
+        "CREATE TABLE a(id TEXT); ALTER TABLE a ADD COLUMN b TEXT;",
+      ),
+    /Unsupported/,
+  );
+  assert.throws(
+    () => migrationStatements("INSERT INTO a VALUES ('x');"),
+    /Unsupported/,
+  );
+  checks += 2;
   const db = await mf.getD1Database("DB");
   // D1 exec expects complete statements; split at statement boundaries including the trigger.
   const sql =
     (await readFile("migrations/0001_private_notebook.sql", "utf8")) +
     (await readFile("migrations/0002_research.sql", "utf8"));
-  const statements = sql
-    .replace(/--[^\n]*/g, "")
-    .match(
-      /CREATE TRIGGER[\s\S]*?END;|CREATE (?:TABLE|(?:UNIQUE )?INDEX)[\s\S]*?;/g,
-    );
-  for (const statement of statements) await db.prepare(statement).run();
+  for (const statement of migrationStatements(sql))
+    await db.prepare(statement).run();
   await assert.rejects(
     db
       .prepare(
@@ -175,6 +184,62 @@ try {
     await request("/api/notebook", { headers: authHeaders })
   ).json();
   expect(data.version, 0);
+  for (const invalidBody of [
+    "{}".padEnd(512001, " "),
+    JSON.stringify({
+      data: { ...data.data, active: "missing" },
+      version: 0,
+      mutationId: randomUUID(),
+    }),
+    JSON.stringify({
+      data: { ...data.data, trips: [data.data.trips[0], data.data.trips[0]] },
+      version: 0,
+      mutationId: randomUUID(),
+    }),
+  ]) {
+    expect(
+      (
+        await request("/api/notebook", {
+          method: "PUT",
+          headers: authHeaders,
+          body: invalidBody,
+        })
+      ).status,
+      400,
+    );
+  }
+  expect(
+    (
+      await request("/api/notebook", {
+        method: "PUT",
+        headers: { ...authHeaders, "Content-Type": "text/plain" },
+        body: "{}",
+      })
+    ).status,
+    400,
+  );
+  expect(
+    (
+      await request("/api/research?tripId=" + "x".repeat(101), {
+        headers: authHeaders,
+      })
+    ).status,
+    400,
+  );
+  expect(
+    (
+      await request("/api/research?tripId=puglia-demo", {
+        headers: authHeaders,
+      })
+    ).status,
+    200,
+  );
+  const themeAsset = await request("/theme.js");
+  expect(themeAsset.headers.get("X-Content-Type-Options"), "nosniff");
+  assert.ok(themeAsset.headers.get("Content-Security-Policy"));
+  checks++;
+  assert.notEqual(themeAsset.headers.get("Cache-Control"), "no-store, private");
+  checks++;
   const next = structuredClone(data.data);
   next.trips[0].notes = "Persistencia verificada";
   next.provider = "Gemini";
@@ -452,6 +517,22 @@ try {
   expect(externalCalls.length, beforeRedirect + 1);
   await researchRequest("cancel", { id: redirected.id });
   fixtureMode.redirect = false;
+  const oversized = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  fixtureMode.oversized = true;
+  const oversizeResult = (
+    await (await researchRequest("step", { id: oversized.id, stage: 0 })).json()
+  ).job;
+  expect(oversizeResult.status, "error");
+  expect(oversizeResult.stage, 0);
+  await researchRequest("cancel", { id: oversized.id });
+  fixtureMode.oversized = false;
   const beforeLimit = externalCalls.length;
   await db
     .prepare(

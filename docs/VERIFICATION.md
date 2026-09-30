@@ -121,3 +121,18 @@ La prueba de runtime descubrió que workerd rechaza `redirect:error`, pese a fig
 **GitHub/Builds:** OAuth de Wrangler devolvió 403 para configurar Builds. El panel autenticado reconoce `scavro/Itinera` y se ha preparado `main`, `npm run build`, `node scripts/deploy.mjs`, Node 24.20 y previews desactivadas. Falta autorizar una credencial propia de despliegue, conectar y comprobar que un commit produce un deploy correcto. No se usó el token preseleccionado de otro proyecto.
 
 **Límites del módulo:** hasta tres búsquedas y cinco páginas leídas parcialmente; sin cobertura exhaustiva de agendas, importación de propuestas al itinerario, fotografías nuevas ni conectores de ofertas. Citas coincidentes no acreditan todas las afirmaciones del modelo. Precios, horarios para una fecha y entradas disponibles siguen pendientes. El resto del plan conserva esas fases.
+
+## Contraste del informe externo — 30/09/2026
+
+Cambios detallados en `REVISION-INFORME.md`; el original `INFORME.md` se conserva localmente. Pruebas unitarias: **25**; integración con Workers/DO/D1 aislados: **89** comprobaciones. Typecheck, build, formato, tokens y auditoría premium strict exigidos para esta revisión. No se han instalado dependencias ni skills, cambiado contraseñas reales o activado consumo de pago.
+
+Navegador local con base efímera y proveedores interceptados:
+
+- Conflicto de PUT: aparece «Cambios sin guardar», volver conserva los cambios y cerrar sin guardar vuelve al login pese al conflicto. Captura `qa/review-logout.jpg`.
+- Dos viajes ficticios: abrir Puglia cuando Roma está activo cambia al itinerario de Puglia.
+- Sesión caducada: la propuesta guardada se recupera; cambiar tema en el login mantiene modo e icono en el cuaderno y restaura el título «Preparar viaje · Itinera».
+- Cinco etapas muestran propuesta, tres fuentes, fechas y lectura parcial. El desplegable de fuentes funciona.
+- Tema claro y oscuro a 390 px: documento 380 px, sin desbordamiento horizontal. Captura de contexto `qa/review-mobile.jpg`; el screenshot de IAB conserva un lienzo mayor que el viewport emulado, por lo que no se usa para medir dimensiones.
+- Gastronomía cambia de «Me interesa» a «Quitar de intereses» y cierre normal vuelve al acceso. Consola sin errores capturados.
+
+La captura de descarga mediante `waitForEvent('download')` se bloqueó en la herramienta y no permitió validar el fichero exportado en esta sesión. No se presenta esa descarga como prueba completada. El botón y la función de exportación siguen disponibles. Estos recorridos no acreditan llamadas a proveedores reales ni un login del propietario en producción.

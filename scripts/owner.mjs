@@ -58,11 +58,14 @@ if (password !== (await masked("Repite la contraseña: ")))
   throw new Error("Las contraseñas no coinciden.");
 const hash = await hashPassword(password);
 const now = new Date().toISOString();
+// Wrangler accepts an SQL file rather than bind parameters. Quote every literal
+// even though the username is restricted and the hash is generated internally.
+const literal = (value) => "'" + value.replaceAll("'", "''") + "'";
 const sql = `INSERT INTO "user" (id,name,email,emailVerified,createdAt,updatedAt,username,displayUsername)
-VALUES ('owner','Propietario','owner@itinera.invalid',1,'${now}','${now}','${username}','${username}')
+VALUES ('owner','Propietario','owner@itinera.invalid',1,${literal(now)},${literal(now)},${literal(username)},${literal(username)})
 ON CONFLICT(id) DO UPDATE SET username=excluded.username,displayUsername=excluded.displayUsername,updatedAt=excluded.updatedAt;
 INSERT INTO account (id,accountId,providerId,userId,password,createdAt,updatedAt)
-VALUES ('owner-password','owner','credential','owner','${hash}','${now}','${now}')
+VALUES ('owner-password','owner','credential','owner',${literal(hash)},${literal(now)},${literal(now)})
 ON CONFLICT(id) DO UPDATE SET password=excluded.password,updatedAt=excluded.updatedAt;
 DELETE FROM session WHERE userId='owner';`;
 const temporary = await mkdtemp(join(tmpdir(), "itinera-owner-"));

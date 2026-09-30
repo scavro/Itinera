@@ -1,3 +1,4 @@
+import { useTheme } from "../theme";
 import { useEffect, useState } from "react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Moon, Sun } from "lucide-react";
 import { Button, Field } from "./ui";
@@ -17,9 +18,7 @@ export function Login({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState({ username: "", password: "" });
-  const [theme, setTheme] = useState(
-    document.documentElement.dataset.theme ?? "light",
-  );
+  const { theme, setTheme } = useTheme();
   useEffect(() => {
     document.title = "Entrar · Itinera";
     document.getElementById("login-title")?.focus();
@@ -27,10 +26,6 @@ export function Login({
   const changeTheme = () => {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("itinera-theme", next);
-    } catch {}
   };
   return (
     <main className="auth-page">

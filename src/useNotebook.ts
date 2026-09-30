@@ -1,57 +1,56 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { api, ApiError, type Notebook } from "./api";
+import { api, ApiError } from "./api";
 import { SessionBlocked } from "./sessionContext";
-type State =
-  "loading" | "saved" | "pending" | "saving" | "error" | "conflict" | "expired";
-const empty: Notebook = { trips: [], active: "", provider: "OpenAI" };
+import { NotebookStore } from "./notebookStore";
+import { notebookResponseSchema, savedResponseSchema } from "./schema";
 export function useNotebook(onExpired: () => void) {
-  const [data, setData] = useState<Notebook>(empty);
-  const [state, setState] = useState<State>("loading");
-  const [error, setError] = useState("");
+  const [store] = useState(
+    () =>
+      new NotebookStore(async (request) => {
+        const response = await api<unknown>("/api/notebook", {
+          method: "PUT",
+          body: JSON.stringify(request),
+        });
+        const parsed = savedResponseSchema.safeParse(response);
+        if (!parsed.success)
+          throw new ApiError(
+            0,
+            "El servidor ha devuelto una confirmación no válida. Reintenta para comprobar el guardado.",
+          );
+        return parsed.data;
+      }),
+  );
+  const [snapshot, setSnapshot] = useState(store.snapshot);
   const blocked = useContext(SessionBlocked);
-  const current = useRef(data);
-  const saved = useRef(JSON.stringify(empty));
-  const version = useRef(0);
-  const running = useRef<Promise<void> | null>(null);
-  const mutation = useRef<{ payload: string; id: string } | null>(null);
-  const ready = useRef(false);
-  const mounted = useRef(true);
   const generation = useRef(0);
-  const expired = useRef(onExpired);
-  expired.current = onExpired;
-  useEffect(() => {
-    if (!blocked && state === "expired") {
-      setError("");
-      setState(
-        saved.current !== JSON.stringify(current.current) ? "pending" : "saved",
-      );
-    }
-  }, [blocked, state]);
+  const mounted = useRef(false);
+  store.blocked = blocked;
+  store.expired = () => {
+    if (mounted.current) onExpired();
+  };
+  store.notify = () => {
+    if (mounted.current) setSnapshot(store.snapshot);
+  };
   const load = useCallback(async () => {
     const ticket = ++generation.current;
-    if (running.current) await running.current.catch(() => {});
-    setState("loading");
-    setError("");
+    await store.idle();
+    if (!mounted.current || ticket !== generation.current) return;
+    store.loading();
     try {
-      const result = await api<{ data: Notebook; version: number }>(
-        "/api/notebook",
+      const parsed = notebookResponseSchema.safeParse(
+        await api<unknown>("/api/notebook"),
       );
-      if (!mounted.current || ticket !== generation.current) return;
-      current.current = result.data;
-      saved.current = JSON.stringify(result.data);
-      version.current = result.version;
-      mutation.current = null;
-      ready.current = true;
-      setData(result.data);
-      setState("saved");
+      if (!parsed.success)
+        throw new ApiError(
+          0,
+          "El cuaderno del servidor no tiene un formato válido. Tus cambios locales se conservan; vuelve a intentar cargarlo.",
+        );
+      if (mounted.current && ticket === generation.current)
+        store.reset(parsed.data.data, parsed.data.version);
     } catch (e) {
-      if (mounted.current && ticket === generation.current) {
-        setError((e as Error).message);
-        setState("error");
-        if (e instanceof ApiError && e.status === 401) expired.current();
-      }
+      if (mounted.current && ticket === generation.current) store.fail(e);
     }
-  }, []);
+  }, [store]);
   useEffect(() => {
     mounted.current = true;
     void load();
@@ -60,128 +59,30 @@ export function useNotebook(onExpired: () => void) {
       generation.current++;
     };
   }, [load]);
-  const handleError = (e: unknown) => {
-    const failure = e as ApiError;
-    setError(failure.message);
-    setState(
-      failure.status === 409
-        ? "conflict"
-        : failure.status === 401
-          ? "expired"
-          : "error",
-    );
-    if (failure.status === 401) expired.current();
-  };
-  const flush = useCallback(async () => {
-    if (!ready.current) return;
-    if (running.current) return running.current;
-    const operation = (async () => {
-      try {
-        while (saved.current !== JSON.stringify(current.current)) {
-          const payload = JSON.stringify(current.current);
-          if (mutation.current?.payload !== payload)
-            mutation.current = { payload, id: crypto.randomUUID() };
-          setState("saving");
-          setError("");
-          const result = await api<{ version: number }>("/api/notebook", {
-            method: "PUT",
-            body: JSON.stringify({
-              data: JSON.parse(payload),
-              version: version.current,
-              mutationId: mutation.current.id,
-            }),
-          });
-          version.current = result.version;
-          saved.current = payload;
-          mutation.current = null;
-        }
-        if (mounted.current) setState("saved");
-      } catch (e) {
-        if (mounted.current) handleError(e);
-        throw e;
-      }
-    })();
-    running.current = operation;
-    try {
-      await operation;
-    } finally {
-      running.current = null;
-    }
-  }, []);
-  const change = useCallback((transform: (data: Notebook) => Notebook) => {
-    const next = transform(current.current);
-    current.current = next;
-    setData(next);
-    setState((s) =>
-      ["error", "conflict", "expired"].includes(s) ? s : "pending",
-    );
-  }, []);
   useEffect(() => {
-    if (state !== "pending") return;
+    if (!blocked) store.resume();
+  }, [blocked, store]);
+  useEffect(() => {
+    if (blocked || snapshot.state !== "pending") return;
     const timer = setTimeout(() => {
-      void flush().catch(() => {});
+      void store.flush().catch(() => {});
     }, 500);
     return () => clearTimeout(timer);
-  }, [data, state, flush]);
-  const retry = useCallback(() => {
-    if (!ready.current) {
-      void load();
-      return;
-    }
-    void flush().catch(() => {});
-  }, [flush, load]);
-  // Destructive writes and form submits commit only after server confirmation.
+  }, [blocked, snapshot, store]);
+  const flush = useCallback(() => store.flush(), [store]);
   const commit = useCallback(
-    async (transform: (data: Notebook) => Notebook) => {
-      await flush();
-      const previous = current.current;
-      const next = transform(previous);
-      const payload = JSON.stringify(next);
-      setState("saving");
-      setError("");
-      if (mutation.current?.payload !== payload)
-        mutation.current = { payload, id: crypto.randomUUID() };
-      const id = mutation.current.id;
-      const operation = (async () => {
-        try {
-          const result = await api<{ version: number }>("/api/notebook", {
-            method: "PUT",
-            body: JSON.stringify({
-              data: next,
-              version: version.current,
-              mutationId: id,
-            }),
-          });
-          version.current = result.version;
-          saved.current = payload;
-          current.current = next;
-          mutation.current = null;
-          setData(next);
-          setState("saved");
-        } catch (e) {
-          handleError(e);
-          throw e;
-        }
-      })();
-      running.current = operation;
-      try {
-        await operation;
-      } finally {
-        running.current = null;
-      }
-    },
-    [flush],
+    (transform: Parameters<NotebookStore["commit"]>[0]) =>
+      store.commit(transform),
+    [store],
   );
-  return {
-    data,
-    change,
-    commit,
-    state,
-    error,
-    retry,
-    load,
-    flush,
-    ready: ready.current,
-    dirty: saved.current !== JSON.stringify(data),
-  };
+  const change = useCallback(
+    (transform: Parameters<NotebookStore["change"]>[0]) =>
+      store.change(transform),
+    [store],
+  );
+  const retry = useCallback(() => {
+    if (!store.snapshot.ready) void load();
+    else void flush().catch(() => {});
+  }, [store, load, flush]);
+  return { ...snapshot, load, flush, commit, change, retry };
 }

@@ -33,6 +33,7 @@ export function TripEditor({
   );
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const validation = validateTrip(draft);
   const [discard, setDiscard] = useState(false);
   const dirty = JSON.stringify(initial) !== JSON.stringify(draft);
   const close = () => {
@@ -171,17 +172,15 @@ export function TripEditor({
                 error={errors.budget}
                 onChange={(e) => set("budget", e.target.value)}
               />
-              {draft.budget &&
-                !validateTrip(draft).budget &&
-                !validateTrip(draft).travelers && (
-                  <p className="field-summary">
-                    Total para {draft.travelers} viajeros:{" "}
-                    {money(
-                      Math.round(Number(draft.budget.replace(",", ".")) * 100) *
-                        Number(draft.travelers),
-                    )}
-                  </p>
-                )}
+              {draft.budget && !validation.budget && !validation.travelers && (
+                <p className="field-summary">
+                  Total para {draft.travelers} viajeros:{" "}
+                  {money(
+                    Math.round(Number(draft.budget.replace(",", ".")) * 100) *
+                      Number(draft.travelers),
+                  )}
+                </p>
+              )}
             </div>
             <SelectField
               id="pace"
@@ -206,7 +205,7 @@ export function TripEditor({
               />
             </div>
           </fieldset>
-          <div className="notice compact" role="status">
+          <div className="notice compact" role={saveError ? "alert" : "status"}>
             {saveError || "El viaje se guardará en tu cuaderno del servidor."}
           </div>
           <div className="dialog-actions">

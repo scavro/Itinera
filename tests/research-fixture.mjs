@@ -5,6 +5,7 @@ export const fixtureMode = {
   failure: false,
   redirect: false,
   delay: 0,
+  oversized: false,
 };
 const fixtureProposal = {
   summary: "Propuesta ficticia de integración",
@@ -33,6 +34,10 @@ export const mockExternal = async (request) => {
     return new Response(null, {
       status: 302,
       headers: { Location: "https://unauthorized.invalid/leak" },
+    });
+  if (fixtureMode.oversized)
+    return new Response(" ".repeat(650001), {
+      headers: { "Content-Type": "application/json" },
     });
   if (fixtureMode.failure)
     return Response.json({ error: "fixture-only" }, { status: 429 });

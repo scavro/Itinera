@@ -151,7 +151,7 @@ Documentación consultada a 30/09/2026:
 - El acceso se implementa en la aplicación; no requiere Cloudflare Access. La medición remota queda dentro de los límites de CPU, el propietario confirma Workers Free, pero la muestra no acredita un mes de consumo.
 - Las APIs de IA, búsqueda y ofertas tienen condiciones y costes propios. Cloudflare Free no las incluye.
 
-Se usarán índices y consultas acotadas, registro de consumo y actualizaciones bajo demanda. Se propondrá un límite diario y mensual de IA separado del presupuesto del viaje. El tope interno reservará margen antes de iniciar llamadas y limitará tokens/herramientas; la estimación de coste no sustituye a los límites de facturación disponibles en cada proveedor.
+Se usarán índices y consultas acotadas, registro de consumo y actualizaciones bajo demanda. Implementado: límites mensuales conservadores de 200 operaciones de búsqueda/lectura y 50 llamadas al modelo, separados del presupuesto del viaje. El límite diario sigue pendiente de acordar; no está implementado. El tope interno reservará margen antes de iniciar llamadas y limitará tokens/herramientas; la estimación de coste no sustituye a los límites de facturación disponibles en cada proveedor.
 
 La prueba de aceptación medirá CPU y uso en Cloudflare real. Si alguna función excede Free, se simplificará o quedará pendiente; no se activará una modalidad de pago automáticamente. La cuota disponible puede estar compartida con otros proyectos de la cuenta.
 

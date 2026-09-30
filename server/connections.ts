@@ -34,6 +34,10 @@ export function providerConfig(env: ResearchEnv, provider: Provider) {
     );
   return { provider, key, model };
 }
+export function configuredLimit(value: string | undefined) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : 0;
+}
 export async function connections(env: ResearchEnv) {
   const month = new Date().toISOString().slice(0, 7);
   const usage = async (service: string) =>
@@ -64,14 +68,17 @@ export async function connections(env: ResearchEnv) {
       name: "Tavily",
       configured: !!env.TAVILY_API_KEY,
       used: await usage("search"),
-      limit: Number(env.SEARCH_MONTHLY_LIMIT),
+      limit: configuredLimit(env.SEARCH_MONTHLY_LIMIT),
     },
-    ai: { used: await usage("ai"), limit: Number(env.AI_MONTHLY_LIMIT) },
+    ai: {
+      used: await usage("ai"),
+      limit: configuredLimit(env.AI_MONTHLY_LIMIT),
+    },
   };
 }
 export async function reserve(env: ResearchEnv, service: "ai" | "search") {
   const month = new Date().toISOString().slice(0, 7);
-  const limit = Number(
+  const limit = configuredLimit(
     service === "ai" ? env.AI_MONTHLY_LIMIT : env.SEARCH_MONTHLY_LIMIT,
   );
   if (!Number.isSafeInteger(limit) || limit < 1)

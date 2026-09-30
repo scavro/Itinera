@@ -1,3 +1,4 @@
+import { migrationStatements } from "./migrations.mjs";
 // Isolated browser QA: ephemeral D1, disposable login, fake secrets, intercepted APIs.
 // This never alters local Wrangler storage or production. Stop with Ctrl+C to retire it.
 import { createServer } from "node:http";
@@ -48,11 +49,7 @@ const db = await mf.getD1Database("DB");
 const sql =
   (await readFile("migrations/0001_private_notebook.sql", "utf8")) +
   (await readFile("migrations/0002_research.sql", "utf8"));
-for (const statement of sql
-  .replace(/--[^\n]*/g, "")
-  .match(
-    /CREATE TRIGGER[\s\S]*?END;|CREATE (?:TABLE|(?:UNIQUE )?INDEX)[\s\S]*?;/g,
-  ))
+for (const statement of migrationStatements(sql))
   await db.prepare(statement).run();
 const now = new Date().toISOString();
 await db
@@ -102,6 +99,7 @@ await writeFile(
   JSON.stringify({ username: "prueba", password }),
   { mode: 0o600 },
 );
+let notebookFail = false;
 const server = createServer(async (req, res) => {
   try {
     // Test controls exist only in this Node bridge, never in the deployed application.
@@ -112,6 +110,24 @@ const server = createServer(async (req, res) => {
       fixtureMode.failure = req.url === "/qa/fail";
       res.writeHead(204);
       res.end();
+      return;
+    }
+    if (
+      req.method === "POST" &&
+      ["/qa/notebook-fail", "/qa/notebook-recover", "/qa/expire"].includes(
+        req.url,
+      )
+    ) {
+      if (req.url === "/qa/expire")
+        await db.prepare('DELETE FROM "session"').run();
+      else notebookFail = req.url === "/qa/notebook-fail";
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    if (req.method === "PUT" && req.url === "/api/notebook" && notebookFail) {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Conflicto ficticio de QA" }));
       return;
     }
     const chunks = [];

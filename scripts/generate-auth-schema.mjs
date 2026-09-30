@@ -1,6 +1,12 @@
 import { getSchema } from "better-auth/db";
 import { authOptions } from "../server/auth.ts";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+if (existsSync("migrations/0001_private_notebook.sql")) {
+  console.error(
+    "La migración inicial ya existe. Crea una nueva migración para cambios posteriores.",
+  );
+  process.exit(1);
+}
 const q = (value) => `"${value.replaceAll('"', '""')}"`;
 const schema = getSchema(authOptions);
 let sql =
@@ -33,4 +39,5 @@ CREATE TABLE notebook (
 );
 `;
 mkdirSync("migrations", { recursive: true });
-writeFileSync("migrations/0001_private_notebook.sql", sql);
+// Never overwrite an applied migration; future changes require a new migration.
+writeFileSync("migrations/0001_private_notebook.sql", sql, { flag: "wx" });

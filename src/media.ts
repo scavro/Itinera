@@ -2,6 +2,8 @@
 export const foodPhotos = {
   orecchiette: {
     src: "/assets/food/orecchiette.jpg",
+    width: 960,
+    height: 720,
     alt: "Orecchiette con cime di rapa servidas en un plato azul",
     author: "Bonniebartilomo",
     source:
@@ -11,6 +13,8 @@ export const foodPhotos = {
   },
   focaccia: {
     src: "/assets/food/focaccia.jpg",
+    width: 960,
+    height: 720,
     alt: "Focaccia barese con tomates y aceitunas negras",
     author: "Simona.IT",
     source: "https://commons.wikimedia.org/wiki/File:Focaccia_Barese.jpg",
@@ -19,6 +23,8 @@ export const foodPhotos = {
   },
   pasticciotto: {
     src: "/assets/food/pasticciotto.jpg",
+    width: 960,
+    height: 600,
     alt: "Pasticciotto de Galatina fotografiado de lado",
     author: "Renano",
     source: "https://commons.wikimedia.org/wiki/File:Pasticciotto.jpg",

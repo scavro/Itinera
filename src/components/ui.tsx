@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useContext,
   type ReactNode,
@@ -81,6 +82,7 @@ export function Dialog({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   const previous = useRef(document.activeElement as HTMLElement);
   const suspended = useContext(SessionBlocked);
@@ -104,14 +106,14 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
         closeRef.current();
       }}
     >
       <div className="dialog-head">
-        <h2 id="dialog-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <Button variant="ghost" onClick={onClose} aria-label="Cerrar diálogo">
           <X size={20} />
         </Button>
@@ -151,11 +153,7 @@ export function Toast({
     return () => clearTimeout(timer);
   }, [message, onClose]);
   return (
-    <div
-      className={`toast ${message ? "visible" : ""}`}
-      role="status"
-      aria-live="polite"
-    >
+    <div className={`toast ${message ? "visible" : ""}`} role="status">
       {message}
       {message && (
         <button aria-label="Cerrar aviso" onClick={onClose}>

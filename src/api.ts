@@ -52,5 +52,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       response.status === 401 ? message : serverMessage,
     );
   }
-  return response.json() as Promise<T>;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError(
+      0,
+      "El servidor ha devuelto una respuesta no válida. Vuelve a intentarlo.",
+    );
+  }
 }

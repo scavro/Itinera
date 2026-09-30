@@ -12,6 +12,8 @@ export function FoodPhoto({
     <figure className={`food-photo ${decorative ? "intro-photo" : ""}`}>
       <img
         src={photo.src}
+        width={photo.width}
+        height={photo.height}
         alt={decorative ? "" : photo.alt}
         loading={decorative ? "eager" : "lazy"}
         decoding="async"

@@ -33,6 +33,8 @@ describe("Evidence boundaries", () => {
     for (const url of [
       "http://museum.org",
       "https://127.0.0.1",
+      "https://0x7f.1",
+      "https://2130706433",
       "https://[::1]",
       "https://10.0.0.1",
       "https://museum.local",

@@ -1,3 +1,4 @@
+import { secure, withSecurityHeaders } from "./security";
 import { DurableObject } from "cloudflare:workers";
 import { createAuth } from "./auth";
 import { handlePrivate } from "./private-handler";
@@ -20,24 +21,28 @@ export default {
       env.BETTER_AUTH_SECRET.length < 32 ||
       !env.APP_ORIGIN
     )
-      return Response.json(
-        { error: "El acceso todavía no está configurado." },
-        { status: 503, headers: { "Cache-Control": "no-store, private" } },
+      return secure(
+        Response.json(
+          { error: "El acceso todavía no está configurado." },
+          { status: 503, headers: { "Cache-Control": "no-store, private" } },
+        ),
       );
     if (
       url.origin !== env.APP_ORIGIN ||
       (!["GET", "HEAD"].includes(request.method) &&
         request.headers.get("Origin") !== env.APP_ORIGIN)
     )
-      return Response.json(
-        { error: "Petición no autorizada." },
-        { status: 403, headers: { "Cache-Control": "no-store, private" } },
+      return secure(
+        Response.json(
+          { error: "Petición no autorizada." },
+          { status: 403, headers: { "Cache-Control": "no-store, private" } },
+        ),
       );
     if (
       ["GET", "HEAD"].includes(request.method) &&
       publicAssets.test(url.pathname)
     )
-      return env.ASSETS.fetch(request);
+      return withSecurityHeaders(await env.ASSETS.fetch(request));
     try {
       return await env.AUTH_GATE.getByName("owner").fetch(request);
     } catch {
@@ -47,9 +52,11 @@ export default {
           path: url.pathname,
         }),
       );
-      return Response.json(
-        { error: "El servicio no está disponible. Vuelve a intentarlo." },
-        { status: 503, headers: { "Cache-Control": "no-store, private" } },
+      return secure(
+        Response.json(
+          { error: "El servicio no está disponible. Vuelve a intentarlo." },
+          { status: 503, headers: { "Cache-Control": "no-store, private" } },
+        ),
       );
     }
   },

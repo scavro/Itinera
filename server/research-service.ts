@@ -142,13 +142,18 @@ export async function startResearch(env: ResearchEnv, input: unknown) {
         now,
       )
       .run();
-  } catch {
+  } catch (error) {
     const race = await read(env, requestId);
     if (race) return view(race);
-    throw new ResearchError(
-      409,
-      "Otra investigación se ha iniciado. Recarga para ver su estado.",
-    );
+    const active = await env.DB.prepare(
+      "SELECT id FROM research_jobs WHERE owner_id='owner' AND status IN ('ready','running') LIMIT 1",
+    ).first();
+    if (active)
+      throw new ResearchError(
+        409,
+        "Otra investigación se ha iniciado. Recarga para ver su estado.",
+      );
+    throw error;
   }
   return view((await read(env, requestId))!);
 }

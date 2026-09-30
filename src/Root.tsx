@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { sessionResponseSchema } from "./schema";
+import { useCallback, useEffect, useRef, useState } from "react";
 import App from "./App";
 import { Login } from "./components/Login";
 import { Logo } from "./components/Logo";
@@ -11,23 +12,41 @@ export default function Root() {
   const [error, setError] = useState("");
   const [locked, setLocked] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
+  const sequence = useRef(0);
+  const controller = useRef<AbortController | null>(null);
   const check = useCallback(async (interactive = false) => {
+    const ticket = ++sequence.current;
+    controller.current?.abort();
+    controller.current = new AbortController();
     setError("");
     try {
-      const result = await api<{ username: string; expiresAt: string }>(
-        "/api/session",
+      const parsed = sessionResponseSchema.safeParse(
+        await api<unknown>("/api/session", {
+          signal: AbortSignal.any([
+            controller.current.signal,
+            AbortSignal.timeout(15000),
+          ]),
+        }),
       );
+      if (ticket !== sequence.current) return;
+      if (!parsed.success)
+        throw new ApiError(
+          0,
+          "No se ha podido comprobar la sesión. Vuelve a intentarlo.",
+        );
+      const result = parsed.data;
       setUsername(result.username);
       setExpiresAt(result.expiresAt);
       setLocked(false);
       if (location.pathname === "/login")
         history.replaceState(null, "", "/" + location.hash);
     } catch (e) {
+      if (ticket !== sequence.current) return;
       if (e instanceof ApiError && e.status === 401) setLocked(true);
       else if (interactive) throw e;
       else setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (ticket === sequence.current) setLoading(false);
     }
   }, []);
   useEffect(() => {
@@ -35,17 +54,26 @@ export default function Root() {
     const channel = new BroadcastChannel("itinera-session");
     channel.onmessage = (e) => {
       if (e.data === "logout") {
+        sequence.current++;
+        controller.current?.abort();
+        setLoading(false);
         setUsername("");
         setLocked(true);
       }
     };
-    return () => channel.close();
+    return () => {
+      sequence.current++;
+      controller.current?.abort();
+      channel.close();
+    };
   }, [check]);
   useEffect(() => {
     if (!username || !expiresAt || locked) return;
+    const expiry = Date.parse(expiresAt);
+    if (!Number.isFinite(expiry)) return;
     const timer = setTimeout(
       () => setLocked(true),
-      Math.max(0, Date.parse(expiresAt) - Date.now()),
+      Math.min(2147483647, Math.max(0, expiry - Date.now())),
     );
     return () => clearTimeout(timer);
   }, [username, expiresAt, locked]);
@@ -56,7 +84,9 @@ export default function Root() {
         <h1>
           {error ? "Tu cuaderno está esperando." : "Abriendo tu cuaderno…"}
         </h1>
-        <p role="status">{error || "Comprobando tu sesión."}</p>
+        <p role={error ? "alert" : "status"}>
+          {error || "Comprobando tu sesión."}
+        </p>
         {error && (
           <Button
             onClick={() => {
@@ -77,6 +107,8 @@ export default function Root() {
             username={username}
             onExpired={() => setLocked(true)}
             onLogout={() => {
+              sequence.current++;
+              controller.current?.abort();
               setUsername("");
               setLocked(true);
               history.replaceState(null, "", "/login");

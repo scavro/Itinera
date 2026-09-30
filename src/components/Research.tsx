@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { SessionBlocked } from "../sessionContext";
+import {
+  parseResearchResponse,
+  parseConnectionsResponse,
+  assertResearchProgress,
+} from "../researchSchema";
+import { useCallback, useEffect, useContext, useRef, useState } from "react";
 import { BookOpen, ExternalLink, Search, Square, Sparkles } from "lucide-react";
 import { api, ApiError } from "../api";
 import {
@@ -12,6 +18,7 @@ import {
 import type { Trip } from "../domain";
 import { Button } from "./ui";
 export function useConnections(onExpired: () => void) {
+  const blocked = useContext(SessionBlocked);
   const [data, setData] = useState<Connections | null>(null);
   const [error, setError] = useState("");
   const expired = useRef(onExpired);
@@ -28,7 +35,8 @@ export function useConnections(onExpired: () => void) {
       const result = await api<Connections>("/api/connections", {
         signal: controller.signal,
       });
-      if (ticket === sequence.current) setData(result);
+      if (ticket === sequence.current)
+        setData(parseConnectionsResponse(result));
     } catch (e) {
       if (ticket !== sequence.current || controller.signal.aborted) return;
       setError((e as Error).message);
@@ -36,12 +44,13 @@ export function useConnections(onExpired: () => void) {
     }
   }, []);
   useEffect(() => {
+    if (blocked) return;
     void refresh();
     return () => {
       sequence.current++;
       request.current?.abort();
     };
-  }, [refresh]);
+  }, [refresh, blocked]);
   return { data, error, refresh };
 }
 export function ConnectionStatus({
@@ -175,9 +184,12 @@ export function ResearchPanel({
   onChanged: () => void;
   focus?: "all" | "culture" | "food";
 }) {
+  const blocked = useContext(SessionBlocked);
   const [job, setJob] = useState<ResearchJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const cancelActive = useRef(false);
   const [error, setError] = useState("");
   const generation = useRef(0);
   const mounted = useRef(true);
@@ -212,8 +224,11 @@ export function ResearchPanel({
         `/api/research?tripId=${encodeURIComponent(trip.id)}`,
         { signal: request.signal },
       );
-      if (mounted.current && ticket === loadSequence.current)
-        setJob(result.job);
+      if (mounted.current && ticket === loadSequence.current) {
+        const found = parseResearchResponse(result).job;
+        setJob(found);
+        if (found?.id === pendingId.current) pendingId.current = null;
+      }
     } catch (e) {
       if (ticket === loadSequence.current && !request.signal.aborted)
         handleError(e);
@@ -222,16 +237,22 @@ export function ResearchPanel({
     }
   }, [trip.id]);
   useEffect(() => {
+    if (blocked) return;
     mounted.current = true;
+    active.current = false;
+    cancelActive.current = false;
+    setBusy(false);
+    setCancelling(false);
     void load();
     return () => {
       mounted.current = false;
+      generation.current++;
       loadSequence.current++;
       loadController.current?.abort();
       active.current = false;
       controller.current?.abort();
     };
-  }, [load]);
+  }, [load, blocked]);
   useEffect(() => {
     const listener = (e: BeforeUnloadEvent) => {
       if (active.current) {
@@ -243,7 +264,7 @@ export function ResearchPanel({
     return () => window.removeEventListener("beforeunload", listener);
   }, []);
   async function run(existing?: ResearchJob) {
-    if (active.current) return;
+    if (active.current || cancelActive.current) return;
     active.current = true;
     setBusy(true);
     setError("");
@@ -266,11 +287,25 @@ export function ResearchPanel({
           }),
           signal: controller.current.signal,
         });
-        next = result.job;
+        const parsed = parseResearchResponse(result).job;
+        if (!parsed)
+          throw new ApiError(
+            0,
+            "La investigación no está disponible. Actualiza su estado.",
+          );
+        next = parsed;
         pendingId.current = null;
       }
       if (live()) setJob(next);
+      let steps = 0;
       while (live() && !["done", "cancelled"].includes(next.status)) {
+        if (steps >= 5)
+          throw new ApiError(
+            0,
+            "Hemos detenido las consultas al alcanzar el límite de etapas. Actualiza su estado antes de reanudar.",
+          );
+        steps++;
+        const previous = next;
         const result = await api<{ job: ResearchJob }>("/api/research/step", {
           method: "POST",
           body: JSON.stringify({ id: next.id, stage: next.stage }),
@@ -280,7 +315,14 @@ export function ResearchPanel({
           ]),
         });
         if (!live()) break;
-        next = result.job;
+        const parsed = parseResearchResponse(result).job;
+        if (!parsed)
+          throw new ApiError(
+            0,
+            "La investigación no está disponible. Actualiza su estado.",
+          );
+        assertResearchProgress(previous, parsed, steps);
+        next = parsed;
         setJob(next);
         onChanged();
         if (next.status === "running") {
@@ -304,8 +346,10 @@ export function ResearchPanel({
     }
   }
   async function cancel() {
-    if (!job) return;
-    generation.current++;
+    if (!job || cancelActive.current) return;
+    cancelActive.current = true;
+    setCancelling(true);
+    const ticket = ++generation.current;
     active.current = false;
     controller.current?.abort();
     setBusy(true);
@@ -315,12 +359,19 @@ export function ResearchPanel({
         method: "POST",
         body: JSON.stringify({ id: job.id }),
       });
-      if (mounted.current) setJob(result.job);
+      if (mounted.current && ticket === generation.current)
+        setJob(parseResearchResponse(result).job);
     } catch (e) {
-      handleError(e);
+      if (ticket === generation.current) handleError(e);
     } finally {
-      if (mounted.current) setBusy(false);
-      onChanged();
+      if (ticket === generation.current) {
+        cancelActive.current = false;
+        if (mounted.current) {
+          setBusy(false);
+          setCancelling(false);
+          onChanged();
+        }
+      }
     }
   }
   return (
@@ -390,10 +441,7 @@ export function ResearchPanel({
                 <BookOpen size={17} />
                 {busy ? "Investigando…" : "Reanudar investigación"}
               </Button>
-              <Button
-                disabled={busy && !active.current}
-                onClick={() => void cancel()}
-              >
+              <Button disabled={cancelling} onClick={() => void cancel()}>
                 <Square size={15} />
                 Cancelar investigación
               </Button>

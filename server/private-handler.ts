@@ -1,3 +1,4 @@
+import { secure } from "./security";
 import { createAuth } from "./auth";
 import { saveSchema } from "./schema";
 import { connections, ResearchError, type ResearchEnv } from "./connections";
@@ -9,29 +10,10 @@ import {
 } from "./research-service";
 import { initialTrip } from "../src/domain";
 
-const publicAssets =
-  /^\/(assets\/(?:index-[\w-]+\.(?:js|css)|[\w-]+\.woff2?)|favicon\.svg|theme\.js)$/;
 const authRoutes = new Set([
   "/api/auth/sign-in/username",
   "/api/auth/sign-out",
 ]);
-function secure(response: Response) {
-  const headers = new Headers(response.headers);
-  headers.set("Cache-Control", "no-store, private");
-  headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "no-referrer");
-  headers.set("X-Frame-Options", "DENY");
-  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  headers.set(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-  );
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 const json = (value: unknown, status = 200) =>
   secure(Response.json(value, { status }));
 async function boundedJson(request: Request) {
@@ -151,10 +133,12 @@ export async function handlePrivate(
         return json({ error: "La sesión ha finalizado." }, 401);
       if (url.pathname === "/api/connections" && request.method === "GET")
         return json(await connections(env));
-      if (url.pathname === "/api/research" && request.method === "GET")
-        return json({
-          job: await latestResearch(env, url.searchParams.get("tripId") ?? ""),
-        });
+      if (url.pathname === "/api/research" && request.method === "GET") {
+        const tripId = url.searchParams.get("tripId") ?? "";
+        if (!tripId || tripId.length > 100)
+          return json({ error: "El viaje no es válido." }, 400);
+        return json({ job: await latestResearch(env, tripId) });
+      }
       if (
         request.method === "POST" &&
         [
@@ -189,15 +173,16 @@ export async function handlePrivate(
         active: initialTrip.id,
         provider: "OpenAI",
       });
-      await env.DB.prepare(
-        "INSERT OR IGNORE INTO notebook (id,payload,version) VALUES ('owner',?,0)",
-      )
-        .bind(seed)
-        .run();
       const read = () =>
         env.DB.prepare(
           "SELECT payload,version,mutation_id FROM notebook WHERE id='owner'",
         ).first<Stored>();
+      if (!(await read()))
+        await env.DB.prepare(
+          "INSERT OR IGNORE INTO notebook (id,payload,version) VALUES ('owner',?,0)",
+        )
+          .bind(seed)
+          .run();
       if (request.method === "GET") {
         const row = await read();
         return json({
@@ -231,7 +216,7 @@ export async function handlePrivate(
       );
     }
     const isLogin = url.pathname === "/login";
-    if (!authenticated && !isLogin && !publicAssets.test(url.pathname)) {
+    if (!authenticated && !isLogin) {
       if (
         request.headers.get("sec-fetch-dest") === "document" ||
         url.pathname === "/"

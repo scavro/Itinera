@@ -2,35 +2,8 @@ import { z } from "zod";
 import type { Trip } from "../src/domain";
 import type { Source, Proposal } from "../src/research";
 import { ResearchError, type ResearchEnv, providerConfig } from "./connections";
-const entrySchema = z
-  .object({
-    title: z.string().min(1).max(150),
-    area: z.string().max(120),
-    category: z.enum([
-      "Museo de historia",
-      "Museo de arte",
-      "Patrimonio romano",
-      "Emblemático",
-      "Agenda cultural",
-      "Ópera",
-      "Gastronomía nacional",
-      "Gastronomía regional",
-    ]),
-    description: z.string().max(1000),
-    sourceIds: z.array(z.string().max(20)).min(1).max(6),
-    quote: z.string().max(300),
-    quoteSourceId: z.string().max(20),
-  })
-  .strict();
-export const proposalSchema = z
-  .object({
-    summary: z.string().max(2000),
-    visits: z.array(entrySchema).max(10),
-    agendas: z.array(entrySchema).max(8),
-    foods: z.array(entrySchema).max(8),
-    pending: z.array(z.string().max(300)).max(12),
-  })
-  .strict();
+import { proposalSchema } from "../src/researchSchema";
+export { proposalSchema } from "../src/researchSchema";
 export function publicSourceUrl(value: string) {
   try {
     const u = new URL(value);

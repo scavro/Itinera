@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { SessionBlocked } from "./sessionContext";
+import { useTheme } from "./theme";
+import { useState, useEffect, useCallback, useMemo, useContext } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -96,6 +98,7 @@ export default function App({
   onExpired: () => void;
   onLogout: () => void;
 }) {
+  const blocked = useContext(SessionBlocked);
   const notebook = useNotebook(onExpired);
   const connections = useConnections(onExpired);
   const { trips, active, provider } = notebook.data;
@@ -117,11 +120,55 @@ export default function App({
   const [page, setPage] = useState<Page>(currentPage);
   const [mutationBusy, setMutationBusy] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const exportNotebook = () => {
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          { format: "itinera-notebook-v1", data: notebook.data },
+          null,
+          2,
+        ),
+      ],
+      { type: "application/json" },
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "itinera-cambios-pendientes.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const logout = async (withoutSaving = false) => {
+    if (logoutBusy || mutationBusy) return;
+    setLogoutBusy(true);
+    setLogoutError("");
+    try {
+      if (!withoutSaving) {
+        try {
+          await notebook.flush();
+        } catch {
+          setLogoutConfirm(true);
+          return;
+        }
+      }
+      await api("/api/auth/sign-out", { method: "POST", body: "{}" });
+      const channel = new BroadcastChannel("itinera-session");
+      channel.postMessage("logout");
+      channel.close();
+      onLogout();
+    } catch (e) {
+      setLogoutError(
+        `No se ha podido confirmar el cierre de sesión. Vuelve a intentarlo antes de dejar este navegador. ${(e as Error).message}`,
+      );
+    } finally {
+      setLogoutBusy(false);
+    }
+  };
   const [reloadConfirm, setReloadConfirm] = useState(false);
   const trip = trips.find((t) => t.id === active) ?? trips[0];
-  const [theme, setTheme] = useState(
-    document.documentElement.dataset.theme ?? "light",
-  );
+  const { theme, setTheme } = useTheme();
   const [editor, setEditor] = useState<Trip | "new" | null>(null);
   const [deleting, setDeleting] = useState<Trip | null>(null);
   const [detail, setDetail] = useState<Visit | null>(null);
@@ -151,14 +198,10 @@ export default function App({
     return () => window.removeEventListener("hashchange", change);
   }, []);
   useEffect(() => {
+    if (blocked) return;
     document.title = `${page === "ajustes" ? "Ajustes" : nav.find((n) => n.id === page)?.label} · Itinera`;
-  }, [page]);
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem("itinera-theme", theme);
-    } catch {}
-  }, [theme]);
+  }, [page, blocked]);
+
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty || editor) {
@@ -175,11 +218,10 @@ export default function App({
   const selectVisit = (id: string) => {
     if (!trip) return;
     const selected = trip.selected.includes(id);
-    update({
-      ...trip,
-      selected: toggle(trip.selected, id),
-      days: { ...trip.days, [id]: trip.days[id] ?? trip.start },
-    });
+    const days = { ...trip.days };
+    if (selected) delete days[id];
+    else days[id] ??= trip.start;
+    update({ ...trip, selected: toggle(trip.selected, id), days });
     notify(
       selected
         ? "Visita retirada del itinerario."
@@ -212,29 +254,33 @@ export default function App({
     notify("Exportación preparada. Guarda el archivo en un lugar privado.");
   };
   const days = trip ? dateRange(trip.start, trip.end) : [];
+  const allocations = useMemo(
+    () => (trip ? budgetAllocation(trip.budgetPerPerson) : []),
+    [trip?.budgetPerPerson],
+  );
   const selectedDay = days.includes(day) ? day : (trip?.start ?? "");
   const isExample =
     trip?.id === initialTrip.id &&
     trip?.destination === initialTrip.destination;
-  const availableVisits = isExample ? visits : [];
-  const selectedVisits = availableVisits.filter((v) =>
-    trip?.selected.includes(v.id),
+  const availableVisits = useMemo(() => (isExample ? visits : []), [isExample]);
+  const selectedVisits = useMemo(
+    () => availableVisits.filter((v) => trip?.selected.includes(v.id)),
+    [availableVisits, trip?.selected],
   );
-  const filteredVisits = availableVisits.filter(
-    (v) =>
-      (category === "Todo" || v.category === category) &&
-      (town === "Todas" || v.town === town) &&
-      `${v.title} ${v.town}`
+  const filteredVisits = useMemo(() => {
+    const normalize = (value: string) =>
+      value
         .toLocaleLowerCase("es")
         .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .includes(
-          query
-            .toLocaleLowerCase("es")
-            .normalize("NFD")
-            .replace(/\p{Diacritic}/gu, ""),
-        ),
-  );
+        .replace(/\p{Diacritic}/gu, "");
+    const normalizedQuery = normalize(query);
+    return availableVisits.filter(
+      (v) =>
+        (category === "Todo" || v.category === category) &&
+        (town === "Todas" || v.town === town) &&
+        normalize(`${v.title} ${v.town}`).includes(normalizedQuery),
+    );
+  }, [availableVisits, category, town, query]);
   const heading = (
     eyebrow: string,
     title: string,
@@ -317,12 +363,16 @@ export default function App({
             ? "Tu cuaderno está esperando."
             : "Abriendo tus viajes…"}
         </h1>
-        <p role="status">
+        <p role={notebook.error ? "alert" : "status"}>
           {notebook.error || "Cargando el cuaderno guardado."}
         </p>
         {notebook.error && (
           <Button onClick={notebook.retry}>Volver a intentar</Button>
         )}
+        {logoutError && <p role="alert">{logoutError}</p>}
+        <Button disabled={logoutBusy} onClick={() => void logout(true)}>
+          {logoutBusy ? "Saliendo…" : "Cerrar sesión"}
+        </Button>
       </main>
     );
   return (
@@ -409,24 +459,7 @@ export default function App({
             <Button
               variant="ghost"
               disabled={logoutBusy || mutationBusy}
-              onClick={async () => {
-                setLogoutBusy(true);
-                try {
-                  await notebook.flush();
-                  await api("/api/auth/sign-out", {
-                    method: "POST",
-                    body: "{}",
-                  });
-                  const channel = new BroadcastChannel("itinera-session");
-                  channel.postMessage("logout");
-                  channel.close();
-                  onLogout();
-                } catch (e) {
-                  notify((e as Error).message);
-                } finally {
-                  setLogoutBusy(false);
-                }
-              }}
+              onClick={() => void logout()}
             >
               <LogOut size={17} />
               {logoutBusy ? "Saliendo…" : "Cerrar sesión"}
@@ -441,7 +474,19 @@ export default function App({
           </div>
         </header>
         <main id="main" inert={mutationBusy || logoutBusy}>
-          <div className="save-status" role="status" aria-live="polite">
+          {logoutError && (
+            <p className="notice" role="alert">
+              {logoutError}
+            </p>
+          )}
+          <div
+            className="save-status"
+            role={
+              ["error", "conflict", "expired"].includes(notebook.state)
+                ? "alert"
+                : "status"
+            }
+          >
             {notebook.state === "saved"
               ? "Guardado en el servidor"
               : notebook.state === "saving"
@@ -696,8 +741,7 @@ export default function App({
                         onClick={() => {
                           setActive(t.id);
                           setDay("");
-                          if (t.id === trip?.id) go("itinerario");
-                          else notify(`Viaje activo: ${t.destination}`);
+                          go("itinerario");
                         }}
                         aria-label={`Abrir viaje a ${t.destination}`}
                       >
@@ -858,9 +902,7 @@ export default function App({
                         <span className={`budget-dot budget-${i}`} />
                         <span>
                           {label}
-                          <strong>
-                            {money(budgetAllocation(trip.budgetPerPerson)[i])}
-                          </strong>
+                          <strong>{money(allocations[i])}</strong>
                         </span>
                         <small>{[25, 40, 20, 10, 5][i]} %</small>
                       </div>
@@ -1331,7 +1373,7 @@ export default function App({
                               }
                             />
                             {trip?.foodInterested.includes(f.id)
-                              ? "Me interesa"
+                              ? "Quitar de intereses"
                               : "Me interesa"}
                           </Button>
                           <Button
@@ -1545,6 +1587,44 @@ export default function App({
           </footer>
         </main>
       </div>
+      {logoutConfirm && (
+        <Dialog
+          title="Cambios sin guardar"
+          onClose={() => {
+            if (!logoutBusy) setLogoutConfirm(false);
+          }}
+        >
+          <p>
+            No hemos podido confirmar el guardado. Puedes exportar tu cuaderno
+            antes de salir. Al cerrar sesión se perderán los cambios que solo
+            estén en esta pestaña.
+          </p>
+          {logoutError && (
+            <p className="notice" role="alert">
+              {logoutError}
+            </p>
+          )}
+          <div className="dialog-actions">
+            <Button
+              autoFocus
+              disabled={logoutBusy}
+              onClick={() => setLogoutConfirm(false)}
+            >
+              Volver al cuaderno
+            </Button>
+            <Button disabled={logoutBusy} onClick={exportNotebook}>
+              Exportar mis cambios
+            </Button>
+            <Button
+              variant="danger"
+              disabled={logoutBusy}
+              onClick={() => void logout(true)}
+            >
+              {logoutBusy ? "Saliendo…" : "Cerrar sin guardar"}
+            </Button>
+          </div>
+        </Dialog>
+      )}
       {reloadConfirm && (
         <Dialog
           title="¿Cargar la versión guardada?"
