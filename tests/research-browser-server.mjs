@@ -1,8 +1,9 @@
+import { rmSync } from "node:fs";
 import { migrationStatements } from "./migrations.mjs";
 // Isolated browser QA: ephemeral D1, disposable login, fake secrets, intercepted APIs.
 // This never alters local Wrangler storage or production. Stop with Ctrl+C to retire it.
 import { createServer } from "node:http";
-import { readFile, writeFile, rm } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { Miniflare, Log, LogLevel, convertV4MiniflareOptions } from "miniflare";
 import { hashPassword } from "../server/auth.ts";
@@ -164,9 +165,12 @@ async function retire() {
   if (retiring) return;
   retiring = true;
   server.close();
+  // Remove the credential before waiting for workerd shutdown, which may itself
+  // be interrupted by the process group. Exit cleanup is synchronous as well.
+  rmSync(credentialsFile, { force: true });
   await mf.dispose();
-  await rm(credentialsFile, { force: true });
   process.exit(0);
 }
+process.on("exit", () => rmSync(credentialsFile, { force: true }));
 process.on("SIGINT", retire);
 process.on("SIGTERM", retire);

@@ -1,0 +1,56 @@
+{
+  "checkedAt": "2026-09-30T19:57:43.187Z",
+  "version": "716bc76c-a33d-4c0c-91b7-47c10e394bde",
+  "scope": "Anonymous access, assets and foreign origin only. No owner login or live provider requests.",
+  "checks": [
+    {
+      "path": "/login",
+      "status": 200,
+      "expected": 200,
+      "nosniff": true
+    },
+    {
+      "path": "/assets/index-93S9Rbj9.js",
+      "status": 200,
+      "expected": 200,
+      "nosniff": true,
+      "cache": "public, max-age=0, must-revalidate"
+    },
+    {
+      "path": "/api/session",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/notebook",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/connections",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/research?tripId=puglia-demo",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/research/start",
+      "foreignOrigin": true,
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "path": "/api/auth/sign-out",
+      "foreignOrigin": true,
+      "status": 403,
+      "expected": 403
+    }
+  ]
+}

@@ -136,3 +136,9 @@ Navegador local con base efímera y proveedores interceptados:
 - Gastronomía cambia de «Me interesa» a «Quitar de intereses» y cierre normal vuelve al acceso. Consola sin errores capturados.
 
 La captura de descarga mediante `waitForEvent('download')` se bloqueó en la herramienta y no permitió validar el fichero exportado en esta sesión. No se presenta esa descarga como prueba completada. El botón y la función de exportación siguen disponibles. Estos recorridos no acreditan llamadas a proveedores reales ni un login del propietario en producción.
+
+**Publicación de las correcciones:** commit `90403bb`, Worker `716bc76c-a33d-4c0c-91b7-47c10e394bde`. Ocho comprobaciones remotas anónimas correctas: login y JS 200 con `nosniff`, caché de JS conservada, sesión/cuaderno/conexiones/investigación 401 y mutaciones de origen ajeno 403. Evidencia `qa/review-remote.json`. No se han aplicado migraciones ni usado la cuenta del propietario.
+
+**Retirada de QA:** al enviar SIGINT, el proceso terminó antes de eliminar su fichero de credenciales. Se eliminó el fichero temporal explícitamente y se ajustó el harness para borrarlo antes de esperar a workerd, además de limpieza síncrona en `exit`. La eliminación se verifica por ausencia del fichero; no se presupone a partir de la señal enviada.
+
+Se volvió a iniciar y retirar el harness corregido. Se comprobó que el fichero temporal existía durante la prueba y había desaparecido al terminar; servidor de QA retirado y pestaña cerrada.
