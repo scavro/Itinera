@@ -29,18 +29,18 @@ Siete secciones semánticas mediante hash con historial atrás/adelante y títul
 
 ## Flow ledger
 
-| Operation   | Trigger                        | Success                                                                  | Failure recovery                                              | Focus                         |
-| ----------- | ------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------- | ----------------------------- |
-| Login       | Entrar a mi cuaderno           | sesión y cuaderno del servidor                                           | error genérico; conserva usuario, borra contraseña incorrecta | primer error o contraseña     |
-| Create      | Nuevo viaje                    | confirma D1 antes de cerrar y abrir itinerario                           | conserva formulario, error inline y reintento                 | título de itinerario          |
-| Edit        | Editar viaje                   | conserva id/selecciones y reajusta fechas; cierra tras confirmación      | conserva formulario                                           | título de itinerario          |
-| Delete      | eliminar en Mis viajes         | quita tras confirmación D1                                               | conserva diálogo y viaje                                      | encabezado de lista           |
-| Selection   | interés, itinerario, proveedor | cambio inmediato, guardado automático a los 500 ms                       | banner persistente y reintento; conflicto no sobrescribe      | control activado              |
-| Search      | filtro cultural                | lista local inmediata                                                    | vacío y limpiar                                               | entrada                       |
-| Cancel/back | cerrar editor                  | confirmar descarte si hay cambios                                        | seguir editando conserva valores                              | disparador                    |
-| Export      | Exportar                       | JSON itinera-trip-v3 con estado de investigación                         | aviso de error                                                | disparador                    |
-| Conflict    | escritura con versión antigua  | exportar cambios y cargar versión guardada, tras confirmar pérdida local | mantener cambios en pestaña                                   | conservar cambios por defecto |
-| Logout      | Cerrar sesión                  | guarda pendiente, revoca cookie en servidor y avisa otras pestañas       | error visible; no anuncia salida si falla                     | título de login               |
+| Operation   | Trigger                        | Success                                                                          | Failure recovery                                              | Focus                         |
+| ----------- | ------------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------- |
+| Login       | Entrar a mi cuaderno           | sesión y cuaderno del servidor                                                   | error genérico; conserva usuario, borra contraseña incorrecta | primer error o contraseña     |
+| Create      | Nuevo viaje                    | confirma D1 antes de cerrar y abrir itinerario                                   | conserva formulario, error inline y reintento                 | título de itinerario          |
+| Edit        | Editar viaje                   | conserva id/selecciones y reajusta fechas; cierra tras confirmación              | conserva formulario                                           | título de itinerario          |
+| Delete      | eliminar en Mis viajes         | quita tras confirmación D1                                                       | conserva diálogo y viaje                                      | encabezado de lista           |
+| Selection   | interés, itinerario, proveedor | cambio inmediato, guardado automático a los 500 ms                               | banner persistente y reintento; conflicto no sobrescribe      | control activado              |
+| Search      | filtro cultural                | lista local inmediata                                                            | vacío y limpiar                                               | entrada                       |
+| Cancel/back | cerrar editor                  | confirmar descarte si hay cambios                                                | seguir editando conserva valores                              | disparador                    |
+| Export      | Exportar                       | JSON itinera-trip-v3 con condiciones y selecciones; investigación separada en D1 | aviso de error                                                | disparador                    |
+| Conflict    | escritura con versión antigua  | exportar cambios y cargar versión guardada, tras confirmar pérdida local         | mantener cambios en pestaña                                   | conservar cambios por defecto |
+| Logout      | Cerrar sesión                  | guarda pendiente, revoca cookie en servidor y avisa otras pestañas               | error visible; no anuncia salida si falla                     | título de login               |
 
 ## Validation and overlays
 
@@ -58,8 +58,12 @@ Sesión absoluta de dos horas, sin prolongación silenciosa; expiración detecta
 
 La identidad solo puede ser owner; login y logout son los únicos endpoints de auth expuestos. No signup, permisos editables, correo ni recuperación pública. Administración por terminal. Escribir exige Origin exacto; hostnames alternativos rechazados. Respuestas privadas no-store y archivos privados servidos después de comprobar sesión. Las APIs de sesión no devuelven tokens ni hashes.
 
-La selección de proveedor es persistente y no configura una conexión ni consume saldo. Solo uno preferido; OpenCode Go pendiente de compatibilidad, sin sustitución por Zen ni cambio automático. No se inicia investigación en esta fase.
+La selección de proveedor es persistente y no configura una conexión ni consume saldo. Solo uno preferido; OpenCode Go pendiente de compatibilidad, sin sustitución por Zen ni cambio automático. La investigación empieza solo al pulsar Investigar, después de confirmar el guardado. Un proveedor por trabajo. Cinco etapas confirmadas por el servidor, IDs para reintentos y bloqueo concurrente. Cancelar conserva lo guardado; cerrar detiene pasos nuevos, aunque el enviado puede terminar. Reanudar consulta el estado confirmado sin cambiar de modelo. Destino/fechas/viajeros/presupuesto/ritmo/notas cambiados invalidan el trabajo. Resultados, fuentes y citas no se sobrescriben con el cuaderno editable.
 
 ## Verification
 
-Typecheck, seis tests de dominio, build, formato, tokens y audit strict. Integración real del runtime local con D1 aislada: login, datos privados, sesión, logout, límite de intentos, persistencia, validación y conflictos. Navegador: formularios, caducidad con borrador, reentrada, dos pestañas, guardado, móvil y temas. Evidencia en `docs/VERIFICATION.md`. D1 remota, CPU y navegador ya comprobados en Cloudflare con cuenta temporal. El acceso entre dispositivos y la aceptación del propietario siguen pendientes; no se deducen de localhost ni de una muestra de CPU.
+Typecheck, seis tests de dominio, build, formato, tokens y audit strict. Integración real del runtime local con D1 aislada: login, datos privados, sesión, logout, límite de intentos, persistencia, validación y conflictos. Navegador: formularios, caducidad con borrador, reentrada, dos pestañas, guardado, móvil y temas. Evidencia en `docs/VERIFICATION.md`. D1 remota, CPU y navegador ya comprobados en Cloudflare con cuenta temporal. El propietario confirma usuario/contraseña y plan Free; el acceso entre dispositivos sigue pendiente; no se deducen de localhost ni de una muestra de CPU.
+
+## Investigación con fuentes
+
+ResearchPanel es el componente compartido de Preparar, Cultura y Qué probar. Estados: cargando, conexión pendiente, listo, investigando, error recuperable, cancelado y propuesta guardada. Error persistente con reanudación explícita; sin fallback ni polling automático. Las lecturas muestran búsqueda/página parcial/inaccesible, URL y momento. Las citas requieren coincidencia literal y referencias conocidas; el resto de hechos conserva comprobación pendiente. En Ajustes, clave configurada no equivale a consulta validada. El esquema de fuentes no permite marcar precios ni plazas como confirmados.

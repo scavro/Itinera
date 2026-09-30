@@ -1,6 +1,6 @@
 # Plan del asistente personal de viajes
 
-Fecha: 30 de septiembre de 2026. Estado: web privada desplegada en Cloudflare con Worker, Durable Object SQLite y D1 EU; 17 comprobaciones remotas y navegador correctos. CPU de la muestra compatible con Free. Pendientes usuario propio, segundo dispositivo, confirmar plan de cuenta y conectar Workers Builds; IA/fuentes aún sin implementar. Véanse `README.md` y `docs/VERIFICATION.md`.
+Fecha: 30 de septiembre de 2026. Estado: web privada desplegada con Worker, Durable Object SQLite y D1 EU. Usuario propio y Workers Free confirmados por el propietario. Primer módulo de IA/búsqueda construido y probado con servicios simulados; claves y validación real pendientes. Workers Builds preparado en el panel, pendiente de autorizar su credencial y verificar un despliegue por commit. Véanse `docs/CONNECTIONS.md` y `docs/VERIFICATION.md`.
 
 ## Objetivo y alcance acordado
 
@@ -148,7 +148,7 @@ Documentación consultada a 30/09/2026:
 - Workers Free: 100.000 solicitudes diarias y 10 ms de CPU por invocación HTTP. La espera de red no cuenta como CPU. Los archivos estáticos tienen su régimen gratuito propio; ejecutar lógica de Worker sigue sujeto a sus límites.
 - D1 Free: 5 millones de filas leídas/día, 100.000 escritas/día y 5 GB totales por cuenta. Existen otros límites, incluido el tamaño por base de datos, que se revisarán al configurar.
 - Durable Objects SQLite está disponible en Free: 100.000 solicitudes y 13.000 GB-s diarios; CPU por petición de 30 segundos. Se usa un solo coordinador porque solo existe un propietario. No se utiliza almacenamiento SQL del objeto para el cuaderno; este permanece en D1. Las cuotas se comparten con los demás proyectos de la cuenta.
-- El acceso se implementa en la aplicación; no requiere Cloudflare Access. La medición remota queda dentro de los límites de CPU, aunque no confirma el plan contratado ni acredita un mes de consumo.
+- El acceso se implementa en la aplicación; no requiere Cloudflare Access. La medición remota queda dentro de los límites de CPU, el propietario confirma Workers Free, pero la muestra no acredita un mes de consumo.
 - Las APIs de IA, búsqueda y ofertas tienen condiciones y costes propios. Cloudflare Free no las incluye.
 
 Se usarán índices y consultas acotadas, registro de consumo y actualizaciones bajo demanda. Se propondrá un límite diario y mensual de IA separado del presupuesto del viaje. El tope interno reservará margen antes de iniciar llamadas y limitará tokens/herramientas; la estimación de coste no sustituye a los límites de facturación disponibles en cada proveedor.
@@ -159,8 +159,8 @@ La prueba de aceptación medirá CPU y uso en Cloudflare real. Si alguna funció
 
 1. **Especificación y viabilidad:** fijar pantallas, contrato de evidencias y criterios de prueba. Variante de acceso elegida: usuario y contraseña propios. Validar una fuente real y el proveedor de IA elegido.
 2. **Esqueleto funcional:** interfaz móvil, viajes editables, presupuesto por código, almacenamiento y escenario ficticio reproducible. Datos de ejemplo identificados como demostración.
-3. **Cloudflare y privacidad:** Worker y `AuthGate`, login, D1 local/remota EU, secreto, persistencia, conflictos y recuperación implementados. Despliegue HTTPS, 17 comprobaciones remotas, guardado/reload/logout en navegador y medición CPU correctos. La cuenta temporal de QA se retira. Pendientes usuario propio, acceso entre dispositivos, confirmar Workers Free en el panel y conectar GitHub a Workers Builds. Pasos en `docs/DEPLOYMENT.md`.
-4. **IA, cultura y gastronomía:** conectar el proveedor elegido, herramientas de viaje y fuentes; preparar los adaptadores opcionales sin exigir otras claves. Incorporar Visitas y Cultura, cobertura de agendas, fichas culinarias por país y región y selección de un único modelo activo. Los otros adaptadores solo se validan en vivo cuando se decida usarlos y se disponga de sus credenciales.
+3. **Cloudflare y privacidad:** Worker y `AuthGate`, login, D1 local/remota EU, secreto, persistencia, conflictos y recuperación implementados. Despliegue HTTPS, 17 comprobaciones remotas, guardado/reload/logout en navegador y medición CPU correctos. La cuenta temporal de QA se retira; usuario propio y Workers Free confirmados por el propietario. Pendientes acceso entre dispositivos y conexión final de GitHub a Workers Builds. Pasos en `docs/DEPLOYMENT.md`.
+4. **IA, cultura y gastronomía:** primer módulo con Tavily y adaptadores Gemini/OpenAI construido, investigación por etapas, fuentes/citas y cuotas probadas con fixtures. Claves y validación real pendientes. Después ampliar cobertura de agendas, incorporar fichas seleccionables e imágenes; preparar los adaptadores opcionales sin exigir otras claves. Incorporar Visitas y Cultura, cobertura de agendas, fichas culinarias por país y región y selección de un único modelo activo. Los otros adaptadores solo se validan en vivo cuando se decida usarlos y se disponga de sus credenciales.
 5. **Verificación:** observaciones con evidencia, estados, discrepancias, caducidad, recálculo y «Comprobar ahora». Añadir conectores de ofertas conforme superen la prueba de viabilidad.
 6. **Prueba integral y publicación privada:** viaje ficticio con fuentes reales, navegación móvil y desde otro equipo, medición del plan Free y aceptación visual del usuario.
 
@@ -193,7 +193,6 @@ Primero datos controlados y después consultas reales para el mismo encargo. Se 
 
 ## Decisiones que quedan para implementar
 
-- Nombre del único usuario y aprovisionamiento de su contraseña fuera de GitHub.
 - Primer proveedor/modelo y claves, que se configurarán como secretos.
 - Confirmación del encaje del asistente de viajes en el uso admitido por OpenCode Go antes de habilitar esa opción; la interfaz y los demás adaptadores pueden avanzar independientemente.
 - Tope de gasto de IA/búsqueda y fuentes de ofertas a las que se tenga acceso.

@@ -2483,3 +2483,103 @@ dialog::backdrop {
 .resize-none {
   resize: none;
 }
+/* Source-backed research shares the notebook's panel, button and feedback owners. */
+.research-panel {
+  margin-bottom: var(--section-gap, 2rem);
+  min-width: 0;
+}
+.research-panel .assistant-heading {
+  flex-wrap: wrap;
+}
+.research-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 1.2rem 0;
+}
+.research-progress {
+  color: var(--primary);
+  font-weight: 600;
+}
+.research-caption,
+.research-pending {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.research-summary {
+  line-height: 1.75;
+}
+.research-section {
+  margin-top: 2rem;
+}
+.research-section h3 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+.research-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+}
+.research-item {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1.2rem;
+  min-width: 0;
+}
+.research-item h4 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin: 0.5rem 0;
+}
+.research-item blockquote {
+  margin: 1rem 0;
+  border-left: 2px solid var(--line);
+  padding-left: 1rem;
+  color: var(--muted);
+}
+.research-references {
+  list-style: none;
+  padding: 0;
+}
+.research-references a,
+.research-sources a {
+  color: var(--primary);
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  overflow-wrap: anywhere;
+}
+.research-references svg,
+.research-sources svg {
+  flex: none;
+}
+.research-sources {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+.research-sources summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+}
+.research-sources li {
+  margin-bottom: 1.2rem;
+  overflow-wrap: anywhere;
+}
+.research-sources p {
+  margin: 0.4rem 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.research-connection {
+  margin-bottom: 1.5rem;
+}
+.research-connection .connection-row {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.research-error {
+  border-left: 3px solid var(--danger);
+}

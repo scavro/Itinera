@@ -15,7 +15,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init,
       credentials: "same-origin",
       cache: "no-store",
-      signal: AbortSignal.timeout(15000),
+      signal: init.signal ?? AbortSignal.timeout(15000),
       headers: { "Content-Type": "application/json", ...init.headers },
     });
   } catch {
@@ -35,7 +35,22 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
             : response.status >= 500
               ? "El servicio no está disponible. Vuelve a intentarlo en unos momentos."
               : "No se ha podido completar la operación. Revisa los datos e inténtalo de nuevo.";
-    throw new ApiError(response.status, message);
+    let detail: unknown;
+    try {
+      detail = await response.json();
+    } catch {}
+    const serverMessage =
+      detail &&
+      typeof detail === "object" &&
+      "error" in detail &&
+      typeof detail.error === "string" &&
+      detail.error.length < 400
+        ? detail.error
+        : message;
+    throw new ApiError(
+      response.status,
+      response.status === 401 ? message : serverMessage,
+    );
   }
   return response.json() as Promise<T>;
 }

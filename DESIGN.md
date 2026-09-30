@@ -70,11 +70,11 @@ Controles 12 px, tarjetas 20 px. Píldoras para estados y filtros, no para toda 
 
 ## Components
 
-Button, Field, Dialog, Empty y Toast viven en `src/components/ui.tsx`. Hover tonal, foco visible, pulsación breve, disabled con texto explicativo adyacente, error con texto y asociación. El acceso reutiliza Logo, Field y Button, con el paisaje a la izquierda en escritorio y formulario en una columna en móvil. Login, estados de red, sesión y guardado usan texto explícito; no hay falsas barras de progreso. El contraste del texto sobre la parte clara del paisaje utiliza el verde primario. Select y fecha nativos: se acepta geometría y locale del navegador/OS. Diálogo nativo `showModal`, fondo inerte, Escape, restauración de foco. Transición de entrada 180 ms, desactivada con reduced motion. Scrollbars globales con thumb/track/hover/active y fallback WebKit. Datos orientativos siempre identificados; sin restaurantes. En gastronomía se usan fotografías identificadas y acreditadas para que el plato sea reconocible.
+Button, Field, Dialog, Empty y Toast viven en `src/components/ui.tsx`. Hover tonal, foco visible, pulsación breve, disabled con texto explicativo adyacente, error con texto y asociación. El acceso reutiliza Logo, Field y Button, con el paisaje a la izquierda en escritorio y formulario en una columna en móvil. Login, estados de red, sesión y guardado usan texto explícito; no hay falsas barras de progreso. El contraste del texto sobre la parte clara del paisaje utiliza el verde primario. Select y fecha nativos: se acepta geometría y locale del navegador/OS. Diálogo nativo `showModal`, fondo inerte, Escape, restauración de foco. Transición de entrada 180 ms, desactivada con reduced motion. Scrollbars globales con thumb/track/hover/active y fallback WebKit. Datos orientativos siempre identificados; sin restaurantes. En gastronomía se usan fotografías identificadas y acreditadas para que el plato sea reconocible. ResearchPanel comparte comportamiento y lenguaje visual entre Preparar, Cultura y Qué probar: tarjetas con fuentes, cobertura desplegable, progreso real y errores persistentes; retícula adaptable a una columna sin desbordar enlaces.
 
 ## Do's and Don'ts
 
 - Mantener el itinerario y sus fuentes por delante de estadísticas ornamentales.
 - Usar los mismos estados y acciones en todas las tarjetas culturales.
-- El acceso y el guardado son reales; distinguirlos de la investigación cultural, precios y modelos aún sin conectar.
+- El acceso y el guardado son reales. Investigación con enlaces, fragmentos y fechas; distinguir clave configurada, lectura parcial, propuesta generada y comprobación pendiente. No presentar una búsqueda como reserva.
 - No usar imágenes de destinos como evidencia de disponibilidad.

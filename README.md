@@ -6,7 +6,9 @@ Web personal de viajes y cultura, responsive, con temas verde/crema y oscuro. Pr
 
 Acceso con un único usuario y contraseña, sin registro público. Worker antes de los archivos privados; Better Auth en un Durable Object SQLite, cookies de sesión y D1. Viajes, itinerarios, selecciones y proveedor preferido se guardan en el servidor. La sesión dura dos horas y el cierre la revoca. Un conflicto entre pestañas permite exportar los cambios y cargar la versión guardada.
 
-**Publicado en [itinera.scavro.workers.dev](https://itinera.scavro.workers.dev)** y verificado con 17 comprobaciones remotas y navegador. El Worker delega la autenticación y el cuaderno al coordinador privado: la muestra remota queda dentro de los límites de CPU de Free sin debilitar scrypt. Pendientes el usuario real, la comprobación en un segundo dispositivo y confirmar el plan de la cuenta; no se ha contratado ningún plan. IA, agendas, precios y disponibilidad todavía no están conectados. OpenAI/Gemini/OpenCode Go son opciones de preferencia, sin llamadas ni gasto; Go requiere confirmar compatibilidad de uso.
+**Publicado en [itinera.scavro.workers.dev](https://itinera.scavro.workers.dev)**. El propietario confirma que su usuario/contraseña funcionan y que la cuenta usa Workers Free. El Worker delega autenticación y operaciones privadas al coordinador para conservar scrypt dentro de los límites medidos. Sigue pendiente la prueba desde un segundo dispositivo.
+
+Primer módulo de investigación publicado: Tavily para búsqueda/lectura, Gemini u OpenAI como único modelo por trabajo, fuentes y citas, resultados guardados, cancelación, reanudación y cuotas. Las pruebas locales usan proveedores simulados; las claves reales todavía no están configuradas. OpenAI permanece bloqueado para consumo de pago y OpenCode Go pendiente de compatibilidad. La primera lectura de páginas no acredita cobertura completa de agendas ni precios/entradas verificados. Guía: [docs/CONNECTIONS.md](docs/CONNECTIONS.md).
 
 ## Ejecutar en el ordenador
 
@@ -27,7 +29,7 @@ Abrir [http://127.0.0.1:8787/](http://127.0.0.1:8787/). `owner:local` pide usuar
 
 ## Cloudflare y GitHub
 
-D1 remota en jurisdicción EU, migración y secreto de sesión ya configurados. Para crear tu acceso, ejecutar `npm run owner:remote` en la raíz del proyecto y elegir usuario/contraseña en la terminal. Después entrar en la web y probarla desde el móvil. Seguir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para la aceptación y la conexión opcional con Workers Builds. El repositorio puede ser público; la contraseña y el secreto nunca se incluyen. No publicar `dist` como un sitio estático independiente: debe servirse a través del Worker protegido.
+D1 remota en jurisdicción EU, migración y secreto de sesión ya configurados. El acceso real ya está creado por el propietario. `owner:remote` se reserva para recuperar o cambiar credenciales; no ejecutarlo para arrancar habitualmente. Probar la web desde el móvil. Seguir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para la aceptación y la conexión opcional con Workers Builds. El repositorio puede ser público; la contraseña y el secreto nunca se incluyen. No publicar `dist` como un sitio estático independiente: debe servirse a través del Worker protegido.
 
 ## Comprobaciones
 
@@ -41,7 +43,7 @@ npm run format:check
 npm run tokens
 ```
 
-La integración usa una D1 aislada y credenciales aleatorias de prueba; no necesita cuenta Cloudflare. `tests/browser-fixture.mjs` es exclusivamente una utilidad de QA local: sustituye el acceso local por una cuenta desechable, nunca actúa sobre producción.
+La integración usa D1 aislada, credenciales aleatorias y llamadas externas interceptadas; no necesita cuenta Cloudflare ni claves reales. `node tests/research-browser-server.mjs` abre QA desechable en el puerto 8790 con fuentes/modelo ficticios, sin alterar los viajes locales o remotos. `tests/browser-fixture.mjs` es exclusivamente una utilidad de QA local: sustituye el acceso local por una cuenta desechable, nunca actúa sobre producción.
 
 Alcance y fases: [PLAN.md](PLAN.md). Identidad visual: [DESIGN.md](DESIGN.md). Interacción: [UX-CONTRACT.md](UX-CONTRACT.md). Evidencia y límites: [docs/VERIFICATION.md](docs/VERIFICATION.md).
 

@@ -1,5 +1,12 @@
 import { createAuth } from "./auth";
 import { saveSchema } from "./schema";
+import { connections, ResearchError, type ResearchEnv } from "./connections";
+import {
+  latestResearch,
+  startResearch,
+  stepResearch,
+  cancelResearch,
+} from "./research-service";
 import { initialTrip } from "../src/domain";
 
 const publicAssets =
@@ -55,7 +62,7 @@ async function boundedJson(request: Request) {
 type Stored = { payload: string; version: number; mutation_id: string | null };
 export async function handlePrivate(
   request: Request,
-  env: Env,
+  env: ResearchEnv,
   auth = createAuth(env),
 ): Promise<Response> {
   const url = new URL(request.url);
@@ -142,6 +149,39 @@ export async function handlePrivate(
     if (url.pathname.startsWith("/api/")) {
       if (!authenticated)
         return json({ error: "La sesión ha finalizado." }, 401);
+      if (url.pathname === "/api/connections" && request.method === "GET")
+        return json(await connections(env));
+      if (url.pathname === "/api/research" && request.method === "GET")
+        return json({
+          job: await latestResearch(env, url.searchParams.get("tripId") ?? ""),
+        });
+      if (
+        request.method === "POST" &&
+        [
+          "/api/research/start",
+          "/api/research/step",
+          "/api/research/cancel",
+        ].includes(url.pathname)
+      ) {
+        let body;
+        try {
+          body = await boundedJson(request);
+        } catch {
+          return json({ error: "Petición no válida." }, 400);
+        }
+        try {
+          const job = url.pathname.endsWith("/start")
+            ? await startResearch(env, body)
+            : url.pathname.endsWith("/step")
+              ? await stepResearch(env, body)
+              : await cancelResearch(env, body);
+          return json({ job });
+        } catch (error) {
+          if (error instanceof ResearchError)
+            return json({ error: error.message }, error.status);
+          throw error;
+        }
+      }
       if (url.pathname !== "/api/notebook")
         return json({ error: "Ruta no disponible." }, 404);
       const seed = JSON.stringify({

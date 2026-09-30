@@ -5,6 +5,12 @@ import { Miniflare, Log, LogLevel, convertV4MiniflareOptions } from "miniflare";
 import { hashPassword } from "../server/auth.ts";
 
 const origin = "https://itinera.test";
+import {
+  externalCalls,
+  fixtureMode,
+  mockExternal,
+} from "./research-fixture.mjs";
+
 const mf = new Miniflare(
   convertV4MiniflareOptions({
     modules: true,
@@ -12,10 +18,18 @@ const mf = new Miniflare(
     compatibilityDate: "2026-09-29",
     compatibilityFlags: ["nodejs_compat"],
     d1Databases: ["DB"],
+    outboundService: mockExternal,
     durableObjects: { AUTH_GATE: { className: "AuthGate", useSQLite: true } },
     bindings: {
       APP_ORIGIN: origin,
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      GEMINI_API_KEY: "mock-only",
+      TAVILY_API_KEY: "mock-only",
+      GEMINI_MODEL: "gemini-3.5-flash-lite",
+      OPENAI_MODEL: "gpt-5-mini",
+      ALLOW_PAID_AI: "false",
+      SEARCH_MONTHLY_LIMIT: "200",
+      AI_MONTHLY_LIMIT: "50",
     },
     assets: {
       directory: "dist",
@@ -49,10 +63,14 @@ const request = (path, options = {}) =>
 try {
   const db = await mf.getD1Database("DB");
   // D1 exec expects complete statements; split at statement boundaries including the trigger.
-  const sql = await readFile("migrations/0001_private_notebook.sql", "utf8");
+  const sql =
+    (await readFile("migrations/0001_private_notebook.sql", "utf8")) +
+    (await readFile("migrations/0002_research.sql", "utf8"));
   const statements = sql
     .replace(/--[^\n]*/g, "")
-    .match(/CREATE TRIGGER[\s\S]*?END;|CREATE (?:TABLE|INDEX)[\s\S]*?;/g);
+    .match(
+      /CREATE TRIGGER[\s\S]*?END;|CREATE (?:TABLE|(?:UNIQUE )?INDEX)[\s\S]*?;/g,
+    );
   for (const statement of statements) await db.prepare(statement).run();
   await assert.rejects(
     db
@@ -228,6 +246,234 @@ try {
     ).status,
     403,
   );
+  // External providers are intercepted: this proves runtime flow, not live provider acceptance.
+  expect(
+    (
+      await request("/api/research/start", {
+        method: "POST",
+        body: JSON.stringify({
+          tripId: "puglia-demo",
+          requestId: randomUUID(),
+        }),
+      })
+    ).status,
+    401,
+  );
+  expect((await request("/api/connections")).status, 401);
+  expect(externalCalls.length, 0);
+  const c = await (
+    await request("/api/connections", { headers: authHeaders })
+  ).json();
+  expect(c.search.configured, true);
+  expect(c.providers.find((p) => p.name === "OpenAI").enabled, false);
+  const researchRequest = (path, input) =>
+    request("/api/research/" + path, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify(input),
+    });
+  const requestId = randomUUID();
+  let job = (
+    await (
+      await researchRequest("start", { tripId: "puglia-demo", requestId })
+    ).json()
+  ).job;
+  expect(job.status, "ready");
+  expect(job.provider, "Gemini");
+  const duplicate = (
+    await (
+      await researchRequest("start", { tripId: "puglia-demo", requestId })
+    ).json()
+  ).job;
+  expect(duplicate.id, job.id);
+  expect(externalCalls.length, 0);
+  for (let stage = 0; stage < 5; stage++)
+    job = (await (await researchRequest("step", { id: job.id, stage })).json())
+      .job;
+  assert.equal(
+    job.status,
+    "done",
+    `${job.error}; stage=${job.stage}; calls=${externalCalls.length}`,
+  );
+  checks++;
+  expect(job.sources.length, 3);
+  expect(job.sources[0].read, "page");
+  expect(job.result.visits[0].quote, "Colección de historia");
+  expect(externalCalls.length, 5);
+  expect(
+    (await (await researchRequest("step", { id: job.id, stage: 4 })).json()).job
+      .status,
+    "done",
+  );
+  expect(externalCalls.length, 5);
+  expect(
+    (
+      await (
+        await request("/api/research?tripId=puglia-demo", {
+          headers: authHeaders,
+        })
+      ).json()
+    ).job.id,
+    job.id,
+  );
+  const usage = await (
+    await request("/api/connections", { headers: authHeaders })
+  ).json();
+  expect(usage.search.used, 4);
+  expect(usage.ai.used, 1);
+  let cancelled = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  cancelled = (
+    await (await researchRequest("cancel", { id: cancelled.id })).json()
+  ).job;
+  expect(cancelled.status, "cancelled");
+  expect(
+    (
+      await (
+        await researchRequest("step", { id: cancelled.id, stage: 0 })
+      ).json()
+    ).job.status,
+    "cancelled",
+  );
+  expect(externalCalls.length, 5);
+  fixtureMode.invalidQuote = true;
+  let rejected = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  for (let stage = 0; stage < 5; stage++)
+    rejected = (
+      await (await researchRequest("step", { id: rejected.id, stage })).json()
+    ).job;
+  expect(rejected.status, "error");
+  expect(rejected.sources.length, 3);
+  expect(rejected.result, null);
+  assert.match(rejected.error, /cita/);
+  checks++;
+  await researchRequest("cancel", { id: rejected.id });
+  fixtureMode.invalidQuote = false;
+  const stale = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  const changed = structuredClone(next);
+  changed.trips[0].notes = "Otra preferencia";
+  await db
+    .prepare("UPDATE notebook SET payload=? WHERE id='owner'")
+    .bind(JSON.stringify(changed))
+    .run();
+  expect(
+    (await researchRequest("step", { id: stale.id, stage: 0 })).status,
+    409,
+  );
+  expect(
+    (
+      await (
+        await request("/api/research?tripId=puglia-demo", {
+          headers: authHeaders,
+        })
+      ).json()
+    ).job.status,
+    "cancelled",
+  );
+  expect(externalCalls.length, 10);
+  const concurrent = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  const beforeConcurrent = externalCalls.length;
+  fixtureMode.delay = 50;
+  await Promise.all(
+    [0, 1].map(() => researchRequest("step", { id: concurrent.id, stage: 0 })),
+  );
+  expect(externalCalls.length, beforeConcurrent + 1);
+  await researchRequest("cancel", { id: concurrent.id });
+  fixtureMode.delay = 0;
+  const recoverable = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  fixtureMode.failure = true;
+  const failed = (
+    await (
+      await researchRequest("step", { id: recoverable.id, stage: 0 })
+    ).json()
+  ).job;
+  expect(failed.status, "error");
+  expect(failed.stage, 0);
+  fixtureMode.failure = false;
+  const recovered = (
+    await (
+      await researchRequest("step", { id: recoverable.id, stage: 0 })
+    ).json()
+  ).job;
+  expect(recovered.status, "ready");
+  expect(recovered.stage, 1);
+  expect(recovered.provider, "Gemini");
+  await researchRequest("cancel", { id: recoverable.id });
+  const redirected = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  fixtureMode.redirect = true;
+  const beforeRedirect = externalCalls.length;
+  const redirectResult = (
+    await (
+      await researchRequest("step", { id: redirected.id, stage: 0 })
+    ).json()
+  ).job;
+  expect(redirectResult.status, "error");
+  expect(externalCalls.length, beforeRedirect + 1);
+  await researchRequest("cancel", { id: redirected.id });
+  fixtureMode.redirect = false;
+  const beforeLimit = externalCalls.length;
+  await db
+    .prepare(
+      "INSERT INTO research_usage(period,service,reserved) VALUES (?,'search',200) ON CONFLICT(period,service) DO UPDATE SET reserved=200",
+    )
+    .bind(new Date().toISOString().slice(0, 7))
+    .run();
+  const limited = (
+    await (
+      await researchRequest("start", {
+        tripId: "puglia-demo",
+        requestId: randomUUID(),
+      })
+    ).json()
+  ).job;
+  const limitedResult = (
+    await (await researchRequest("step", { id: limited.id, stage: 0 })).json()
+  ).job;
+  expect(limitedResult.status, "error");
+  assert.match(limitedResult.error, /límite mensual/);
+  checks++;
+  expect(externalCalls.length, beforeLimit);
   const second = await request("/api/auth/sign-in/username", {
     method: "POST",
     headers: { "cf-connecting-ip": "192.0.2.2" },

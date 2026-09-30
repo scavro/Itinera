@@ -41,6 +41,11 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button, Dialog, Empty, Toast, SelectField } from "./components/ui";
+import {
+  ResearchPanel,
+  ConnectionStatus,
+  useConnections,
+} from "./components/Research";
 import { TripEditor } from "./components/TripEditor";
 import { CoastArt, JourneyArt, VisitArt } from "./components/Artwork";
 import { FoodPhoto } from "./components/FoodPhoto";
@@ -92,6 +97,7 @@ export default function App({
   onLogout: () => void;
 }) {
   const notebook = useNotebook(onExpired);
+  const connections = useConnections(onExpired);
   const { trips, active, provider } = notebook.data;
   const setTrips = (next: Trip[] | ((current: Trip[]) => Trip[])) =>
     notebook.change((data) => {
@@ -188,7 +194,7 @@ export default function App({
           {
             format: "itinera-trip-v3",
             notice:
-              "Borrador de viaje. budgetPerPerson está expresado en céntimos de euro por persona. Sin precios, horarios ni disponibilidad consultados.",
+              "Borrador de viaje. budgetPerPerson está expresado en céntimos de euro por persona. Sin comprobaciones específicas de precios, horarios ni disponibilidad. La investigación se conserva por separado en el servidor.",
             trip,
           },
           null,
@@ -482,8 +488,8 @@ export default function App({
           <div className="demo-notice">
             <Info size={15} />
             <span>
-              Tus cambios se guardan en el servidor. Las visitas y los precios
-              siguen pendientes de investigación.
+              Puedes investigar tu viaje en Preparar viaje. Precios, horarios y
+              disponibilidad requieren comprobación específica.
             </span>
             <a href="#ajustes">
               Qué está conectado
@@ -635,7 +641,7 @@ export default function App({
                           <Circle size={18} />
                           <span>
                             Comprobar las fuentes
-                            <small>Pendiente de conexión</small>
+                            <small>Consulta desde Preparar viaje</small>
                           </span>
                         </li>
                       </ol>
@@ -779,56 +785,25 @@ export default function App({
                     </Button>
                   )}
                 </section>
-                <section className="panel assistant-panel">
-                  <div className="assistant-heading">
-                    <Sparkles size={22} />
-                    <span>Tu asistente de viaje</span>
-                    <span className="badge">Sin conectar</span>
-                  </div>
-                  <h2>Primero, lo que te importa.</h2>
-                  <p>
-                    El asistente partirá de tus preferencias para investigar el
-                    destino y construir una propuesta contigo.
-                  </p>
-                  <div className="preference-list">
-                    <div>
-                      <Landmark />
-                      <span>
-                        Museos de historia y arte
-                        <small>Colecciones y exposiciones temporales</small>
-                      </span>
-                    </div>
-                    <div>
-                      <BookOpen />
-                      <span>
-                        Las huellas de Roma
-                        <small>Domus, yacimientos y patrimonio romano</small>
-                      </span>
-                    </div>
-                    <div>
-                      <Music />
-                      <span>
-                        Una noche de ópera
-                        <small>Si la agenda coincide con tus fechas</small>
-                      </span>
-                    </div>
-                    <div>
-                      <MapPin />
-                      <span>
-                        Los lugares emblemáticos
-                        <small>Sin perder tu forma de viajar</small>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="notice">
-                    La conversación estará disponible al conectar una API. Esta
-                    demo no envía datos ni consume saldo.
-                  </div>
-                  <Button onClick={() => go("ajustes")}>
-                    Ver conexiones
-                    <ArrowRight size={17} />
-                  </Button>
-                </section>
+                {trip ? (
+                  <ResearchPanel
+                    key={trip.id}
+                    trip={trip}
+                    provider={provider}
+                    connections={connections.data}
+                    beforeStart={notebook.flush}
+                    onExpired={onExpired}
+                    onChanged={() => void connections.refresh()}
+                  />
+                ) : (
+                  <section className="panel">
+                    <h2>Tu asistente de viaje</h2>
+                    <p>
+                      Crea un viaje para investigar sus museos, agendas y
+                      gastronomía.
+                    </p>
+                  </section>
+                )}
               </div>
             </>
           )}
@@ -1126,6 +1101,19 @@ export default function App({
                   Agendas culturales
                 </Button>,
               )}
+              {trip && (
+                <ResearchPanel
+                  key={`culture-${trip.id}`}
+                  trip={trip}
+                  provider={provider}
+                  connections={connections.data}
+                  beforeStart={notebook.flush}
+                  onExpired={onExpired}
+                  onChanged={() => void connections.refresh()}
+                  focus="culture"
+                />
+              )}
+              {isExample && <h2>Fichas de ejemplo · Puglia</h2>}
               <div className="culture-toolbar">
                 <div className="search">
                   <Search size={18} />
@@ -1221,7 +1209,7 @@ export default function App({
                 >
                   {availableVisits.length
                     ? "Prueba otra búsqueda o cambia los filtros."
-                    : "Las fichas de ejemplo pertenecen a Puglia. Investigar otros destinos requiere conectar las fuentes."}
+                    : "Estas fichas de ejemplo pertenecen a Puglia. Las propuestas del destino se muestran en Cultura con fuentes."}
                 </Empty>
               )}
               <div className="culture-footer">
@@ -1241,10 +1229,24 @@ export default function App({
                 "Qué probar.",
                 "Platos con historia. El lugar donde probarlos lo decides tú.",
               )}
+              {trip && (
+                <ResearchPanel
+                  key={`food-${trip.id}`}
+                  trip={trip}
+                  provider={provider}
+                  connections={connections.data}
+                  beforeStart={notebook.flush}
+                  onExpired={onExpired}
+                  onChanged={() => void connections.refresh()}
+                  focus="food"
+                />
+              )}
               <div className="food-intro">
                 <div>
                   <span className="eyebrow">
-                    {isExample ? "ITALIA / PUGLIA" : "TU DESTINO"}
+                    {isExample
+                      ? "FICHAS DE EJEMPLO · ITALIA / PUGLIA"
+                      : "TU DESTINO"}
                   </span>
                   <h2>
                     Un viaje, también
@@ -1401,8 +1403,8 @@ export default function App({
                     <Sparkles size={21} />
                   </div>
                   <p>
-                    Elige un proveedor para la futura conexión. Solo uno activo
-                    cada vez; sin cambios automáticos.
+                    Elige el proveedor de la investigación. Solo uno activo cada
+                    vez; sin cambios automáticos.
                   </p>
                   <div
                     className="provider-options"
@@ -1417,7 +1419,7 @@ export default function App({
                         onClick={() => {
                           setProvider(p);
                           notify(
-                            `Preferencia: ${p}. No se ha iniciado ninguna conexión.`,
+                            `Proveedor: ${p}. Se usará en la próxima investigación.`,
                           );
                         }}
                       >
@@ -1429,7 +1431,11 @@ export default function App({
                           <small>
                             {p === "OpenCode Go"
                               ? "Compatibilidad pendiente"
-                              : "API sin configurar"}
+                              : connections.data?.providers.find(
+                                    (item) => item.name === p,
+                                  )?.configured
+                                ? "Clave configurada"
+                                : "Pendiente de configurar"}
                           </small>
                         </span>
                         {provider === p ? (
@@ -1443,18 +1449,29 @@ export default function App({
                   <div className="notice">
                     {provider === "OpenCode Go"
                       ? "Go está orientado a agentes de programación. Hay que confirmar que admite este uso antes de habilitarlo. No se sustituirá por Zen."
-                      : "Las claves se configurarán en el servidor, nunca en este navegador. Elegir una opción no configura una API."}
+                      : "Las claves se configuran en Cloudflare. Elegir una opción no inicia llamadas ni cambia una investigación ya comenzada."}
                   </div>
                   <div className="connection-row">
                     <span>Conexión activa</span>
-                    <strong>Ninguna</strong>
+                    <strong>
+                      {connections.data?.providers.find(
+                        (p) => p.name === provider && p.enabled && p.configured,
+                      )
+                        ? provider
+                        : "Pendiente"}
+                    </strong>
                   </div>
                   <div className="connection-row">
-                    <span>Llamadas a la IA</span>
-                    <strong>0 llamadas</strong>
+                    <span>Consultas reservadas este mes</span>
+                    <strong>{connections.data?.ai.used ?? "—"}</strong>
                   </div>
                 </section>
                 <div>
+                  <ConnectionStatus
+                    data={connections.data}
+                    error={connections.error}
+                    retry={() => void connections.refresh()}
+                  />
                   <section className="panel">
                     <div className="section-heading">
                       <h2>A tu gusto</h2>
@@ -1689,30 +1706,15 @@ export default function App({
       {coverage && (
         <Dialog title="Agendas culturales" onClose={() => setCoverage(false)}>
           <p>
-            La investigación revisará turismo local, museos y teatros para tus
-            fechas. Una agenda anunciada no confirma entradas disponibles.
+            Las fuentes localizadas y su estado de lectura se muestran en
+            «Cultura con fuentes». Esta primera investigación consulta un
+            conjunto limitado de páginas.
           </p>
-          {(isExample
-            ? [
-                "Turismo de Puglia",
-                "Museos de Bari y Taranto",
-                "Teatro Petruzzelli · Bari",
-              ]
-            : [
-                "Turismo local y regional",
-                "Museos y patrimonio",
-                "Teatros y programación cultural",
-              ]
-          ).map((s) => (
-            <div className="connection-row" key={s}>
-              <span>{s}</span>
-              <span className="badge">Sin consultar</span>
-            </div>
-          ))}
           <div className="notice">
-            0 agendas consultadas. Conecta las fuentes para revisar la
-            programación real; todavía no podemos afirmar si hay funciones de
-            ópera.
+            La revisión completa de agendas por ciudad, museos y teatros sigue
+            pendiente. Una programación anunciada no confirma entradas
+            disponibles. Si no encontramos ópera, no podemos concluir que no
+            haya funciones.
           </div>
           <Button
             onClick={() => {
