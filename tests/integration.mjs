@@ -12,6 +12,7 @@ const mf = new Miniflare(
     compatibilityDate: "2026-09-29",
     compatibilityFlags: ["nodejs_compat"],
     d1Databases: ["DB"],
+    durableObjects: { AUTH_GATE: { className: "AuthGate", useSQLite: true } },
     bindings: {
       APP_ORIGIN: origin,
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
@@ -81,8 +82,8 @@ try {
       1,
       now,
       now,
-      "prueba",
-      "prueba",
+      "prueba_con-guion",
+      "prueba_con-guion",
     )
     .run();
   await db
@@ -108,7 +109,10 @@ try {
     (
       await request("/api/auth/sign-in/username", {
         method: "POST",
-        body: JSON.stringify({ username: "prueba", password: "wrong" }),
+        body: JSON.stringify({
+          username: "prueba_con-guion",
+          password: "wrong",
+        }),
       })
     ).status,
     401,
@@ -125,7 +129,7 @@ try {
   );
   const login = await request("/api/auth/sign-in/username", {
     method: "POST",
-    body: JSON.stringify({ username: "prueba", password }),
+    body: JSON.stringify({ username: "prueba_con-guion", password }),
   });
   expect(login.status, 200);
   const cookies = login.headers.getSetCookie();
@@ -227,7 +231,7 @@ try {
   const second = await request("/api/auth/sign-in/username", {
     method: "POST",
     headers: { "cf-connecting-ip": "192.0.2.2" },
-    body: JSON.stringify({ username: "prueba", password }),
+    body: JSON.stringify({ username: "prueba_con-guion", password }),
   });
   expect(second.status, 200);
   const secondCookie = second.headers
@@ -271,7 +275,10 @@ try {
         await request("/api/auth/sign-in/username", {
           method: "POST",
           headers: { "cf-connecting-ip": "192.0.2.3" },
-          body: JSON.stringify({ username: "prueba", password: "wrong" }),
+          body: JSON.stringify({
+            username: "prueba_con-guion",
+            password: "wrong",
+          }),
         })
       ).status,
       401,
@@ -281,7 +288,7 @@ try {
       await request("/api/auth/sign-in/username", {
         method: "POST",
         headers: { "cf-connecting-ip": "192.0.2.3" },
-        body: JSON.stringify({ username: "prueba", password }),
+        body: JSON.stringify({ username: "prueba_con-guion", password }),
       })
     ).status,
     429,

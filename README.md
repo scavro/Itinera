@@ -4,9 +4,9 @@ Web personal de viajes y cultura, responsive, con temas verde/crema y oscuro. Pr
 
 ## Fase implementada
 
-Acceso con un único usuario y contraseña, sin registro público. Worker antes de los archivos privados; Better Auth, cookies de sesión y D1. Viajes, itinerarios, selecciones y proveedor preferido se guardan en el servidor. La sesión dura dos horas y el cierre la revoca. Un conflicto entre pestañas permite exportar los cambios y cargar la versión guardada.
+Acceso con un único usuario y contraseña, sin registro público. Worker antes de los archivos privados; Better Auth en un Durable Object SQLite, cookies de sesión y D1. Viajes, itinerarios, selecciones y proveedor preferido se guardan en el servidor. La sesión dura dos horas y el cierre la revoca. Un conflicto entre pestañas permite exportar los cambios y cargar la versión guardada.
 
-**Verificado localmente** con Workers y D1. El despliegue remoto, la medición de CPU en Cloudflare Free y la entrada desde otro dispositivo siguen pendientes. IA, agendas, precios y disponibilidad todavía no están conectados. OpenAI/Gemini/OpenCode Go son opciones de preferencia, sin llamadas ni gasto; Go requiere confirmar compatibilidad de uso.
+**Publicado en [itinera.scavro.workers.dev](https://itinera.scavro.workers.dev)** y verificado con 17 comprobaciones remotas y navegador. El Worker delega la autenticación y el cuaderno al coordinador privado: la muestra remota queda dentro de los límites de CPU de Free sin debilitar scrypt. Pendientes el usuario real, la comprobación en un segundo dispositivo y confirmar el plan de la cuenta; no se ha contratado ningún plan. IA, agendas, precios y disponibilidad todavía no están conectados. OpenAI/Gemini/OpenCode Go son opciones de preferencia, sin llamadas ni gasto; Go requiere confirmar compatibilidad de uso.
 
 ## Ejecutar en el ordenador
 
@@ -27,7 +27,7 @@ Abrir [http://127.0.0.1:8787/](http://127.0.0.1:8787/). `owner:local` pide usuar
 
 ## Cloudflare y GitHub
 
-Seguir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para D1 remoto, secreto de sesión, usuario propio y Workers Builds. El repositorio puede ser público; la contraseña y el secreto nunca se incluyen. No publicar `dist` como un sitio estático independiente: debe servirse a través del Worker protegido.
+D1 remota en jurisdicción EU, migración y secreto de sesión ya configurados. Para crear tu acceso, ejecutar `npm run owner:remote` en la raíz del proyecto y elegir usuario/contraseña en la terminal. Después entrar en la web y probarla desde el móvil. Seguir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para la aceptación y la conexión opcional con Workers Builds. El repositorio puede ser público; la contraseña y el secreto nunca se incluyen. No publicar `dist` como un sitio estático independiente: debe servirse a través del Worker protegido.
 
 ## Comprobaciones
 

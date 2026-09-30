@@ -58,7 +58,11 @@ export const authOptions = {
     max: 100,
     customRules: { "/sign-in/username": { window: 300, max: 5 } },
   },
-  plugins: [username()],
+  plugins: [
+    username({
+      usernameValidator: (value) => /^[a-z0-9_-]{3,30}$/.test(value),
+    }),
+  ],
 } satisfies BetterAuthOptions;
 
 export function createAuth(env: Env) {

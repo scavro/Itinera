@@ -1,6 +1,6 @@
 # Plan del asistente personal de viajes
 
-Fecha: 29 de septiembre de 2026. Estado: esqueleto y acceso privado con Worker/D1 implementados y verificados localmente. Despliegue, aceptación remota y CPU en Free pendientes; conexiones de IA/fuentes aún sin implementar. Véanse `README.md` y `docs/VERIFICATION.md`.
+Fecha: 30 de septiembre de 2026. Estado: web privada desplegada en Cloudflare con Worker, Durable Object SQLite y D1 EU; 17 comprobaciones remotas y navegador correctos. CPU de la muestra compatible con Free. Pendientes usuario propio, segundo dispositivo, confirmar plan de cuenta y conectar Workers Builds; IA/fuentes aún sin implementar. Véanse `README.md` y `docs/VERIFICATION.md`.
 
 ## Objetivo y alcance acordado
 
@@ -57,7 +57,7 @@ Una función anunciada no acredita entradas disponibles. Comprobar venta, locali
 ## Arquitectura recomendada para Cloudflare
 
 - Interfaz en React y TypeScript, compilada como archivos estáticos y servida mediante Workers Static Assets.
-- API y coordinación de herramientas en un Cloudflare Worker TypeScript. Sustituye la propuesta inicial de servidor Python/FastAPI.
+- Worker TypeScript como puerta de entrada, con un Durable Object SQLite `AuthGate` para autenticación y operaciones privadas del único propietario. D1 sigue siendo la fuente de sesiones y viajes. El reenvío HTTP conserva cookies y el handler de Better Auth. El coordinador descarga la CPU de scrypt del Worker; no hay alarmas ni procesos de fondo. Sustituye la propuesta inicial de servidor Python/FastAPI.
 - Cloudflare D1 para viajes, preferencias, mensajes, alternativas, itinerarios, visitas, eventos culturales, cobertura de agendas, gastronomía, evidencias y consumo.
 - Workers Secrets para claves de modelos y proveedores de datos. Configuración inicial mediante Cloudflare; el selector web utiliza únicamente conexiones ya configuradas.
 - Acceso propio de la aplicación con un único nombre de usuario y contraseña, sin registro público. Se protegerán interfaz, API, exportaciones y rutas de previsualización.
@@ -74,7 +74,7 @@ Requisito: solo el propietario puede entrar, sin depender de su PC y sin registr
 
 Decisión del usuario: nombre de usuario y contraseña exclusivos de Itinera, con una experiencia sencilla para un único propietario. No se requiere una cuenta Google ni Cloudflare para entrar en la web.
 
-Implementado con Better Auth 1.7.6 y D1: contraseña scrypt nativa (N=16384, r=16, p=1), sesiones revocables de dos horas, cookies HttpOnly/Secure en HTTPS y cinco intentos de login por IP cada cinco minutos. El servidor solo permite la identidad `owner` y los endpoints de entrada/salida. El alta y recuperación se realizan con `owner:local` o `owner:remote`, con contraseña oculta en terminal. Las credenciales nunca se incluyen en GitHub. La integración local está probada; todavía hay que medir CPU en el plan Free real antes de aceptar su viabilidad remota.
+Implementado con Better Auth 1.7.6 y D1: contraseña scrypt nativa (N=16384, r=16, p=1), sesiones revocables de dos horas, cookies HttpOnly/Secure en HTTPS y cinco intentos de login por IP cada cinco minutos. El servidor solo permite la identidad `owner` y los endpoints de entrada/salida. El alta y recuperación se realizan con `owner:local` o `owner:remote`, con contraseña oculta en terminal. Las credenciales nunca se incluyen en GitHub. La integración local y las pruebas remotas están completadas. La primera versión necesitaba 131–132 ms de CPU para entrar, fuera de los 10 ms de Worker Free. Tras trasladar el handler a `AuthGate`, la muestra remota del Worker fue 0–1 ms y las dos verificaciones scrypt del objeto 117/129 ms, bajo su límite de 30 segundos. La muestra no garantiza cuotas futuras; el plan de la cuenta queda por confirmar.
 
 La identidad se verificará en servidor antes de entregar páginas privadas, datos o exportaciones. Las URLs alternativas y previsualizaciones deben quedar protegidas o desactivadas. Las peticiones que modifican datos verificarán el origen. El Worker debe ejecutarse antes de servir los archivos privados de la interfaz.
 
@@ -118,14 +118,14 @@ La comprobación se asigna por dato: precio, disponibilidad, horario, condición
 
 Estados visibles:
 
-| Estado | Significado |
-| --- | --- |
-| Consultado | La fuente devuelve ese dato para las condiciones indicadas; se muestra cuándo. |
-| Orientativo | Tarifa general, precio «desde», conversión o estimación. |
-| Pendiente | Falta evidencia suficiente, la fuente está bloqueada o faltan condiciones. |
-| Requiere actualización | La observación superó la antigüedad fijada para ese tipo de dato o cambió el encargo. |
-| Discrepancia | Las fuentes ofrecen resultados incompatibles. |
-| No disponible | La fuente declara que no hay plazas/oferta para esa consulta; no equivale a un fallo de red. |
+| Estado                 | Significado                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| Consultado             | La fuente devuelve ese dato para las condiciones indicadas; se muestra cuándo.               |
+| Orientativo            | Tarifa general, precio «desde», conversión o estimación.                                     |
+| Pendiente              | Falta evidencia suficiente, la fuente está bloqueada o faltan condiciones.                   |
+| Requiere actualización | La observación superó la antigüedad fijada para ese tipo de dato o cambió el encargo.        |
+| Discrepancia           | Las fuentes ofrecen resultados incompatibles.                                                |
+| No disponible          | La fuente declara que no hay plazas/oferta para esa consulta; no equivale a un fallo de red. |
 
 La marca «Consultado» la genera el servidor a partir de una llamada completada y evidencia válida, no porque el modelo escriba que lo comprobó. La evidencia no depende de una etiqueta global de confianza.
 
@@ -143,11 +143,12 @@ La primera comprobación automática de extremo a extremo utilizará una fuente 
 
 ## Presupuesto y gratuidad
 
-Documentación consultada a 29/09/2026:
+Documentación consultada a 30/09/2026:
 
 - Workers Free: 100.000 solicitudes diarias y 10 ms de CPU por invocación HTTP. La espera de red no cuenta como CPU. Los archivos estáticos tienen su régimen gratuito propio; ejecutar lógica de Worker sigue sujeto a sus límites.
 - D1 Free: 5 millones de filas leídas/día, 100.000 escritas/día y 5 GB totales por cuenta. Existen otros límites, incluido el tamaño por base de datos, que se revisarán al configurar.
-- El acceso elegido se implementará en la aplicación; no requiere configurar Cloudflare Access. Su coste de CPU y almacenamiento se comprobará dentro de las cuotas de Workers y D1.
+- Durable Objects SQLite está disponible en Free: 100.000 solicitudes y 13.000 GB-s diarios; CPU por petición de 30 segundos. Se usa un solo coordinador porque solo existe un propietario. No se utiliza almacenamiento SQL del objeto para el cuaderno; este permanece en D1. Las cuotas se comparten con los demás proyectos de la cuenta.
+- El acceso se implementa en la aplicación; no requiere Cloudflare Access. La medición remota queda dentro de los límites de CPU, aunque no confirma el plan contratado ni acredita un mes de consumo.
 - Las APIs de IA, búsqueda y ofertas tienen condiciones y costes propios. Cloudflare Free no las incluye.
 
 Se usarán índices y consultas acotadas, registro de consumo y actualizaciones bajo demanda. Se propondrá un límite diario y mensual de IA separado del presupuesto del viaje. El tope interno reservará margen antes de iniciar llamadas y limitará tokens/herramientas; la estimación de coste no sustituye a los límites de facturación disponibles en cada proveedor.
@@ -158,7 +159,7 @@ La prueba de aceptación medirá CPU y uso en Cloudflare real. Si alguna funció
 
 1. **Especificación y viabilidad:** fijar pantallas, contrato de evidencias y criterios de prueba. Variante de acceso elegida: usuario y contraseña propios. Validar una fuente real y el proveedor de IA elegido.
 2. **Esqueleto funcional:** interfaz móvil, viajes editables, presupuesto por código, almacenamiento y escenario ficticio reproducible. Datos de ejemplo identificados como demostración.
-3. **Cloudflare y privacidad:** Worker, login, D1 local, persistencia, conflictos y recuperación de sesión implementados y probados. Pendientes D1 remota, secreto/usuario de producción, despliegue, persistencia entre dispositivos y medición Free. Pasos en `docs/DEPLOYMENT.md`; requiere renovar la autorización de Cloudflare.
+3. **Cloudflare y privacidad:** Worker y `AuthGate`, login, D1 local/remota EU, secreto, persistencia, conflictos y recuperación implementados. Despliegue HTTPS, 17 comprobaciones remotas, guardado/reload/logout en navegador y medición CPU correctos. La cuenta temporal de QA se retira. Pendientes usuario propio, acceso entre dispositivos, confirmar Workers Free en el panel y conectar GitHub a Workers Builds. Pasos en `docs/DEPLOYMENT.md`.
 4. **IA, cultura y gastronomía:** conectar el proveedor elegido, herramientas de viaje y fuentes; preparar los adaptadores opcionales sin exigir otras claves. Incorporar Visitas y Cultura, cobertura de agendas, fichas culinarias por país y región y selección de un único modelo activo. Los otros adaptadores solo se validan en vivo cuando se decida usarlos y se disponga de sus credenciales.
 5. **Verificación:** observaciones con evidencia, estados, discrepancias, caducidad, recálculo y «Comprobar ahora». Añadir conectores de ofertas conforme superen la prueba de viabilidad.
 6. **Prueba integral y publicación privada:** viaje ficticio con fuentes reales, navegación móvil y desde otro equipo, medición del plan Free y aceptación visual del usuario.
@@ -196,7 +197,7 @@ Primero datos controlados y después consultas reales para el mismo encargo. Se 
 - Primer proveedor/modelo y claves, que se configurarán como secretos.
 - Confirmación del encaje del asistente de viajes en el uso admitido por OpenCode Go antes de habilitar esa opción; la interfaz y los demás adaptadores pueden avanzar independientemente.
 - Tope de gasto de IA/búsqueda y fuentes de ofertas a las que se tenga acceso.
-- Dirección workers.dev inicial o dominio propio ya disponible.
+- Dirección inicial ya activa: `https://itinera.scavro.workers.dev`. Dominio propio opcional.
 
 Estas decisiones no requieren todavía credenciales para revisar el plan ni construir la interfaz de demostración.
 
@@ -205,6 +206,8 @@ Estas decisiones no requieren todavía credenciales para revisar el plan ni cons
 - [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
 - [Workers: precios](https://developers.cloudflare.com/workers/platform/pricing/)
 - [Workers: límites y CPU](https://developers.cloudflare.com/workers/platform/limits/)
+- [Durable Objects: límites](https://developers.cloudflare.com/durable-objects/platform/limits/)
+- [Durable Objects: cuotas gratuitas](https://developers.cloudflare.com/durable-objects/platform/pricing/)
 - [D1: precios y comportamiento al superar cuotas](https://developers.cloudflare.com/d1/platform/pricing/)
 - [Workers Builds e importación de repositorios](https://developers.cloudflare.com/workers/ci-cd/builds/)
 - [Integración con GitHub](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/)

@@ -10,8 +10,17 @@
     "run_worker_first": true,
     "not_found_handling": "single-page-application"
   },
-  "observability": { "enabled": true, "head_sampling_rate": 1 },
-  "vars": { "APP_ORIGIN": "http://127.0.0.1:8787" },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  },
+  "vars": {
+    "APP_ORIGIN": "http://127.0.0.1:8787"
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -23,15 +32,42 @@
   "env": {
     "production": {
       "name": "itinera",
-      "vars": { "APP_ORIGIN": "https://REPLACE_ME.workers.dev" },
+      "vars": {
+        "APP_ORIGIN": "https://itinera.scavro.workers.dev"
+      },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "itinera",
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "1d0ae680-070d-4dfe-a053-dbf52564a860",
           "migrations_dir": "migrations"
         }
-      ]
+      ],
+      "workers_dev": true,
+      "preview_urls": false,
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "AUTH_GATE",
+            "class_name": "AuthGate"
+          }
+        ]
+      }
     }
-  }
+  },
+  "account_id": "92a7822da7a4b5add4fcf2c82ebaadc7",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AUTH_GATE",
+        "class_name": "AuthGate"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "auth-gate-v1",
+      "new_sqlite_classes": ["AuthGate"]
+    }
+  ]
 }

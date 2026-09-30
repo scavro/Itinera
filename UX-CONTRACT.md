@@ -2,9 +2,9 @@
 
 ## Product context and business-context sources
 
-Producto personal, español es-ES, móvil y escritorio. `PLAN.md` define alcance, prioridades, precios, proveedores y despliegue. Esta fase añade acceso con un único propietario y persistencia Worker/D1. No hay registro público, reservas ni facturación. IA, fuentes, horarios y precios siguen pendientes; Puglia es un ejemplo ficticio. Japón no es mercado ni locale objetivo.
+Producto personal, español es-ES, móvil y escritorio. `PLAN.md` define alcance, prioridades, precios, proveedores y despliegue. Esta fase añade acceso con un único propietario y persistencia Worker/AuthGate/D1. No hay registro público, reservas ni facturación. IA, fuentes, horarios y precios siguen pendientes; Puglia es un ejemplo ficticio. Japón no es mercado ni locale objetivo.
 
-La eliminación quita el viaje del servidor y no tiene papelera: confirmación que identifica el destino y explica la pérdida. Exportar descarga una copia controlada por el usuario. Solo el tema se guarda en localStorage; viajes, claves y contraseña no. La cookie de sesión es HttpOnly y Secure en HTTPS. La nube todavía requiere aceptación remota.
+La eliminación quita el viaje del servidor y no tiene papelera: confirmación que identifica el destino y explica la pérdida. Exportar descarga una copia controlada por el usuario. Solo el tema se guarda en localStorage; viajes, claves y contraseña no. La cookie de sesión es HttpOnly y Secure en HTTPS. La nube está desplegada y probada con una cuenta temporal; usuario propio y segundo dispositivo pendientes.
 
 ## Visual contract
 
@@ -62,4 +62,4 @@ La selección de proveedor es persistente y no configura una conexión ni consum
 
 ## Verification
 
-Typecheck, seis tests de dominio, build, formato, tokens y audit strict. Integración real del runtime local con D1 aislada: login, datos privados, sesión, logout, límite de intentos, persistencia, validación y conflictos. Navegador: formularios, caducidad con borrador, reentrada, dos pestañas, guardado, móvil y temas. Evidencia en `docs/VERIFICATION.md`. D1 remota, CPU Free y acceso entre dispositivos requieren pruebas en Cloudflare; no se deducen de localhost.
+Typecheck, seis tests de dominio, build, formato, tokens y audit strict. Integración real del runtime local con D1 aislada: login, datos privados, sesión, logout, límite de intentos, persistencia, validación y conflictos. Navegador: formularios, caducidad con borrador, reentrada, dos pestañas, guardado, móvil y temas. Evidencia en `docs/VERIFICATION.md`. D1 remota, CPU y navegador ya comprobados en Cloudflare con cuenta temporal. El acceso entre dispositivos y la aceptación del propietario siguen pendientes; no se deducen de localhost ni de una muestra de CPU.

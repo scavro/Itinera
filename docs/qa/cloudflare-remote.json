@@ -1,0 +1,546 @@
+{
+  "date": "2026-09-30",
+  "origin": "https://itinera.scavro.workers.dev",
+  "version": "a837fd42-719f-4e3d-80a0-3e20d511c868",
+  "scope": "API remota y navegador integrado con cuenta temporal; no es prueba en segundo dispositivo ni de cuota mensual.",
+  "remote_api_assertions_passed": 17,
+  "local_integration_assertions_passed": 36,
+  "remote_browser": [
+    "Login correcto",
+    "Interés MArTA guardado",
+    "Recarga conserva interés",
+    "Logout y recarga exigen login"
+  ],
+  "cpu_summary": {
+    "worker_max_ms": 1,
+    "auth_gate_login_ms": [129, 117, 118],
+    "worker_free_limit_ms": 10,
+    "durable_object_limit_ms": 30000
+  },
+  "account_workers_plan": "Pendiente de confirmar en el panel; lectura de suscripciones OAuth denegada 403; no se cambia plan.",
+  "temporary_qa_removed": true,
+  "records": [
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 0,
+      "wall_ms": 851,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 34,
+      "wall_ms": 268,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/assets/food/orecchiette.jpg",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/food/orecchiette.jpg",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 1,
+      "wall_ms": 309,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/",
+      "method": "GET",
+      "status": 302,
+      "cpu_ms": 0,
+      "wall_ms": 20,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/",
+      "method": "GET",
+      "status": 302,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/login",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 1,
+      "wall_ms": 59,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/login",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 90,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/auth/sign-up/email",
+      "method": "POST",
+      "status": 404,
+      "cpu_ms": 0,
+      "wall_ms": 17,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/auth/sign-up/email",
+      "method": "POST",
+      "status": 404,
+      "cpu_ms": 0,
+      "wall_ms": 0,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/auth/sign-in/username",
+      "method": "POST",
+      "status": 401,
+      "cpu_ms": 129,
+      "wall_ms": 446,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/auth/sign-in/username",
+      "method": "POST",
+      "status": 401,
+      "cpu_ms": 0,
+      "wall_ms": 465,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/auth/sign-in/username",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 117,
+      "wall_ms": 502,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/auth/sign-in/username",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 524,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 5,
+      "wall_ms": 145,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 1,
+      "wall_ms": 164,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 5,
+      "wall_ms": 280,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 297,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 200,
+      "cpu_ms": 1,
+      "wall_ms": 332,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 200,
+      "cpu_ms": 8,
+      "wall_ms": 315,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 200,
+      "cpu_ms": 4,
+      "wall_ms": 347,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 368,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 303,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 409,
+      "cpu_ms": 0,
+      "wall_ms": 371,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 403,
+      "cpu_ms": 0,
+      "wall_ms": 0,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/auth/sign-out",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 547,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 0,
+      "wall_ms": 92,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/auth/sign-in/username",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 118,
+      "wall_ms": 807,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/auth/sign-in/username",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 826,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 2,
+      "wall_ms": 153,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 171,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 4,
+      "wall_ms": 284,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 301,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 552,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "PUT",
+      "status": 200,
+      "cpu_ms": 10,
+      "wall_ms": 530,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 189,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 5,
+      "wall_ms": 162,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/index-DSqKxapV.css",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 11,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/theme.js",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 14,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/index-W1MQ4ei0.js",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 15,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/REDACTED.woff2",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 8,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/REDACTED.woff2",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 7,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/favicon.svg",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 6,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 4,
+      "wall_ms": 153,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 176,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 5,
+      "wall_ms": 301,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/notebook",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 323,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/REDACTED.woff2",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 7,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/auth/sign-out",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 26,
+      "wall_ms": 883,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/auth/sign-out",
+      "method": "POST",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 903,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/login",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 0,
+      "wall_ms": 271,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/login",
+      "method": "GET",
+      "status": 200,
+      "cpu_ms": 5,
+      "wall_ms": 248,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/index-DSqKxapV.css",
+      "method": "GET",
+      "status": 304,
+      "cpu_ms": 0,
+      "wall_ms": 9,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/assets/index-W1MQ4ei0.js",
+      "method": "GET",
+      "status": 304,
+      "cpu_ms": 0,
+      "wall_ms": 10,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/theme.js",
+      "method": "GET",
+      "status": 304,
+      "cpu_ms": 0,
+      "wall_ms": 11,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/favicon.svg",
+      "method": "GET",
+      "status": 304,
+      "cpu_ms": 0,
+      "wall_ms": 7,
+      "outcome": "ok"
+    },
+    {
+      "component": "AuthGate",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok"
+    },
+    {
+      "component": "Worker",
+      "path": "/api/session",
+      "method": "GET",
+      "status": 401,
+      "cpu_ms": 0,
+      "wall_ms": 17,
+      "outcome": "ok"
+    }
+  ]
+}

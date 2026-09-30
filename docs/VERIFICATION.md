@@ -1,10 +1,10 @@
-# Verificación de Itinera — 29/09/2026
+# Verificación de Itinera — 30/09/2026
 
-Las primeras secciones documentan la maqueta original. La sección «Fase 3» recoge el estado actual con backend privado.
+Las primeras secciones documentan la maqueta original. La sección «Fase 3» recoge el backend local; «Despliegue remoto» recoge el estado actual.
 
 ## Alcance y entorno
 
-Aplicación local en Vite, navegador integrado Chromium; no se ha desplegado en Cloudflare ni conectado a APIs. Los datos de Puglia son un ejemplo y no se han consultado ofertas, agendas ni precios. Durante las pruebas el viewport móvil efectivo observado fue 300 CSS px, más estrecho que un teléfono habitual.
+En la revisión inicial del 29/09: aplicación local en Vite, navegador integrado Chromium; todavía no se había desplegado en Cloudflare ni conectado a APIs. Los datos de Puglia son un ejemplo y no se han consultado ofertas, agendas ni precios. Durante las pruebas el viewport móvil efectivo observado fue 300 CSS px, más estrecho que un teléfono habitual.
 
 ## Flujos probados en navegador
 
@@ -37,7 +37,6 @@ El navegador local valida interacción y presentación, no privacidad de un desp
 - **Ilustración por destino:** al abrir París, la portada mostró el paisaje genérico con etiqueta «Paisaje de inspiración · Ilustración», en vez del paisaje específico del ejemplo de Puglia. Las visitas de París quedaron vacías, sin atribuirle las de Puglia.
 - **Fotos gastronómicas:** las tres fotos de Puglia son JPEG reales de Wikimedia Commons. En el navegador cargaron con anchura natural de 960 px, texto alternativo y crédito visible con autor, fuente y licencia. En móvil, el documento midió 380 CSS px dentro de un viewport de 390 CSS px, sin desbordamiento horizontal.
 - **Visitas y cultura:** siguen usando ilustraciones declaradas como tales en esta maqueta; la sustitución por fotos verificadas de cada lugar está especificada en `PLAN.md` para la versión conectada.
-
 
 ## Fase 3 · acceso y persistencia privados
 
@@ -76,6 +75,31 @@ Se preservan paleta, tipografías y componentes. Evoluciones documentadas: acces
 
 ### Límites y entrega
 
-No se ha desplegado en Cloudflare. `wrangler whoami` indicó autorización caducada sin posibilidad de refrescarla en sesión no interactiva. D1 remota, secreto, usuario real, dos dispositivos y CPU de peticiones en Free quedan pendientes. No se ha elegido ninguna contraseña del propietario. La cuenta local de QA, sus sesiones y datos de prueba se retiraron; el propietario debe configurar acceso mediante `owner:local` o `owner:remote`.
+Estado al cierre del 29/09: no se había desplegado en Cloudflare. `wrangler whoami` indicó autorización caducada sin posibilidad de refrescarla en sesión no interactiva. D1 remota, secreto, usuario real, dos dispositivos y CPU de peticiones en Free quedan pendientes. No se ha elegido ninguna contraseña del propietario. La cuenta local de QA, sus sesiones y datos de prueba se retiraron; el propietario debe configurar acceso mediante `owner:local` o `owner:remote`.
 
 IA, búsqueda, agendas, precios/disponibilidad y fuentes siguen sin conectar. Guardar una visita no consulta ni verifica sus datos. La selección de proveedor se conserva en D1 y no realiza llamadas. Guía remota en `docs/DEPLOYMENT.md`.
+
+## Despliegue remoto · 30/09/2026
+
+### Recursos y cambio de arquitectura
+
+- HTTPS: `https://itinera.scavro.workers.dev`, Worker `itinera`, versión `a837fd42-719f-4e3d-80a0-3e20d511c868`.
+- D1 remota `itinera`, UUID `1d0ae680-070d-4dfe-a053-dbf52564a860`, jurisdicción EU. Migración `0001_private_notebook.sql` aplicada. Secreto de sesión configurado sin imprimirlo ni guardarlo en el repositorio.
+- La primera prueba remota pasó 17 comprobaciones, pero scrypt consumía 131–132 ms de CPU en el Worker, por encima de los 10 ms de Free. Se conservó el hash y se trasladó el handler privado a `AuthGate`, Durable Object SQLite disponible en Free. D1 sigue siendo la fuente de sesiones y cuaderno.
+- El coordinador se identifica por el único propietario; se reutiliza la configuración de Better Auth, sin almacenar credenciales de peticiones en estado global. Reenvío HTTP nativo para preservar cookies y cuerpo. Sin alarmas ni tareas persistentes.
+- Usuario con guion: la validación de Better Auth por defecto no coincidía con el aprovisionamiento. Se unificó a letras minúsculas, números, guion y guion bajo, 3–30 caracteres. El test local usa `prueba_con-guion`.
+- Tras el cambio, 36 comprobaciones de integración local correctas, tipos/build correctos y despliegue correcto (2488,11 KiB / gzip 418,84 KiB, arranque 55 ms).
+
+### API real y navegador
+
+**17 comprobaciones remotas correctas**: API/fotos privadas 401, raíz redirige a login, acceso 200, registro cerrado 404, contraseña incorrecta 401, login 200 con cookie Secure/HttpOnly/SameSite, sesión sin token JSON, D1 inicial, escritura, reintento idempotente, lectura persistente, conflicto 409, origen ajeno 403, logout y cookie revocada 401.
+
+Navegador integrado contra HTTPS real: login temporal correcto; marcar interés por MArTA mostró pendiente y después «Guardado en el servidor»; recarga conservó la selección. Logout devolvió a login; recargar mantuvo la pantalla de acceso sin cuaderno. La cuenta temporal, sesiones, hash y cuaderno de QA se retiran antes de aprovisionar al propietario.
+
+### CPU y límites
+
+El tail se procesó mediante una lista permitida de campos (componente, ruta, estado, CPU, tiempo y outcome). La evidencia pública `docs/qa/cloudflare-remote.json` excluye cabeceras, cookies, IP, cuerpos y credenciales. Los logs brutos de la prueba se guardaron temporalmente en `/tmp` con permisos privados y se eliminan al terminar.
+
+La muestra de las 17 comprobaciones tras `AuthGate`: puerta Worker **0–1 ms**, login scrypt dentro del objeto **117/129 ms**, outcome `ok`. Límite documentado: Worker Free 10 ms, Durable Object 30 segundos. Es una muestra de peticiones reales, no una garantía para todas las cargas futuras ni validación de cuotas mensuales. Los tiempos de espera de D1/red se reflejan en wallTime, no son CPU.
+
+No se ha cambiado ni contratado plan. La API de suscripciones respondió 403 por los permisos OAuth existentes; no se amplían permisos de facturación. Confirmar Workers Free y cuotas en el panel. Segundo dispositivo, cuenta real y Workers Builds pendientes de intervención del propietario. Las APIs de IA/búsqueda/ofertas siguen sin conectar; las visitas, agendas, precios y disponibilidad permanecen sin consultar.
