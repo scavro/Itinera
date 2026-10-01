@@ -2583,3 +2583,44 @@ dialog::backdrop {
 .research-error {
   border-left: 3px solid var(--danger);
 }
+
+.photo-pending {
+  min-height: 160px;
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 20px;
+}
+.research-evidence {
+  margin-block: 16px;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.research-evidence summary {
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+  color: var(--primary);
+}
+.research-references small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.research-item > .button {
+  margin-top: 12px;
+}
+
+.photo-pending.compact {
+  min-height: 72px;
+  height: 72px;
+  gap: 4px;
+  padding: 8px;
+}

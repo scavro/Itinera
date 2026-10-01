@@ -47,7 +47,22 @@ import {
   ResearchPanel,
   ConnectionStatus,
   useConnections,
+  ResearchEvidence,
 } from "./components/Research";
+import { PhotoPending } from "./components/PhotoPending";
+import { ResearchFoods } from "./components/ResearchFoods";
+import { useResearchLibrary } from "./useResearchLibrary";
+import {
+  researchVisits,
+  resolvedResearch,
+  saveResearchItem,
+  removeResearchItem,
+} from "./researchLibrary";
+import {
+  providers,
+  type ResearchJob,
+  type ResearchSelection,
+} from "./research";
 import { TripEditor } from "./components/TripEditor";
 import { CoastArt, JourneyArt, VisitArt } from "./components/Artwork";
 import { FoodPhoto } from "./components/FoodPhoto";
@@ -168,6 +183,7 @@ export default function App({
   };
   const [reloadConfirm, setReloadConfirm] = useState(false);
   const trip = trips.find((t) => t.id === active) ?? trips[0];
+  const library = useResearchLibrary(trip, onExpired);
   const { theme, setTheme } = useTheme();
   const [editor, setEditor] = useState<Trip | "new" | null>(null);
   const [deleting, setDeleting] = useState<Trip | null>(null);
@@ -214,6 +230,24 @@ export default function App({
   }, [dirty, editor]);
   const update = (next: Trip) => {
     setTrips((t) => t.map((x) => (x.id === next.id ? next : x)));
+  };
+  const saveProposal = async (job: ResearchJob, ref: ResearchSelection) => {
+    setMutationBusy(true);
+    try {
+      await notebook.commit((data) => ({
+        ...data,
+        trips: data.trips.map((t) =>
+          t.id === job.tripId ? saveResearchItem(t, job, ref) : t,
+        ),
+      }));
+      notify(
+        ref.kind === "foods"
+          ? "Plato guardado en Qué probar."
+          : "Visita guardada en Visitas y cultura. Puedes añadirla al itinerario.",
+      );
+    } finally {
+      setMutationBusy(false);
+    }
   };
   const selectVisit = (id: string) => {
     if (!trip) return;
@@ -262,7 +296,13 @@ export default function App({
   const isExample =
     trip?.id === initialTrip.id &&
     trip?.destination === initialTrip.destination;
-  const availableVisits = useMemo(() => (isExample ? visits : []), [isExample]);
+  const availableVisits = useMemo(
+    () => [...(isExample ? visits : []), ...researchVisits(trip, library.jobs)],
+    [isExample, trip, library.jobs],
+  );
+  const savedFoods = resolvedResearch(trip, library.jobs).filter(
+    (x) => x.ref.kind === "foods",
+  );
   const selectedVisits = useMemo(
     () => availableVisits.filter((v) => trip?.selected.includes(v.id)),
     [availableVisits, trip?.selected],
@@ -301,7 +341,7 @@ export default function App({
   const visitCard = (v: Visit) => (
     <article className="visit-card" key={v.id}>
       <div className="visit-picture">
-        <VisitArt kind={v.art} />
+        {v.research ? <PhotoPending /> : <VisitArt kind={v.art} />}
         <button
           className={`heart ${trip?.interested.includes(v.id) ? "selected" : ""}`}
           aria-label={`${trip?.interested.includes(v.id) ? "Quitar de" : "Marcar como"} interés: ${v.title}`}
@@ -313,7 +353,7 @@ export default function App({
         >
           <Heart size={18} />
         </button>
-        <span className="art-label">Ilustración</span>
+        {!v.research && <span className="art-label">Ilustración</span>}
       </div>
       <div className="visit-content">
         <div className="card-meta">
@@ -336,7 +376,7 @@ export default function App({
         <div className="card-bottom">
           <span className="status">
             <span />
-            Sin consultar
+            {v.research ? "Por comprobar" : "Sin consultar"}
           </span>
           <button
             className={`small-action ${trip?.selected.includes(v.id) ? "is-added" : ""}`}
@@ -351,6 +391,15 @@ export default function App({
             <span>{trip?.selected.includes(v.id) ? "Añadido" : "Añadir"}</span>
           </button>
         </div>
+        {v.research && trip && <ResearchEvidence {...v.research} trip={trip} />}
+        {v.research && trip && (
+          <Button
+            variant="ghost"
+            onClick={() => update(removeResearchItem(trip, v.id))}
+          >
+            Retirar ficha guardada
+          </Button>
+        )}
       </div>
     </article>
   );
@@ -474,6 +523,18 @@ export default function App({
           </div>
         </header>
         <main id="main" inert={mutationBusy || logoutBusy}>
+          {!!trip?.researchSelections?.length &&
+            ["cultura", "sabores", "itinerario"].includes(page) &&
+            (library.loading ? (
+              <p role="status">Abriendo las fichas y fuentes guardadas…</p>
+            ) : library.error ? (
+              <div className="notice" role="alert">
+                {library.error}
+                <Button onClick={() => void library.retry()}>
+                  Volver a cargar fuentes
+                </Button>
+              </div>
+            ) : null)}
           {logoutError && (
             <p className="notice" role="alert">
               {logoutError}
@@ -836,6 +897,7 @@ export default function App({
                     provider={provider}
                     connections={connections.data}
                     beforeStart={notebook.flush}
+                    onSave={saveProposal}
                     onExpired={onExpired}
                     onChanged={() => void connections.refresh()}
                   />
@@ -1013,11 +1075,22 @@ export default function App({
                               <div className="timeline-marker">{i + 1}</div>
                               <div className="timeline-card">
                                 <div className="timeline-art">
-                                  <VisitArt kind={v.art} />
+                                  {v.research ? (
+                                    <PhotoPending compact />
+                                  ) : (
+                                    <VisitArt kind={v.art} />
+                                  )}
                                 </div>
                                 <div className="timeline-body">
                                   <span className="eyebrow">{v.category}</span>
-                                  <h3>{v.title}</h3>
+                                  <h3>
+                                    <button
+                                      className="text-title"
+                                      onClick={() => setDetail(v)}
+                                    >
+                                      {v.title}
+                                    </button>
+                                  </h3>
                                   <p>
                                     <MapPin size={14} />
                                     {v.town} <span>· {v.duration}</span>
@@ -1058,23 +1131,25 @@ export default function App({
                               </div>
                             </article>
                           ))}
-                        {!selectedVisits.some(
-                          (v) =>
-                            (trip.days[v.id] ?? trip.start) === selectedDay,
-                        ) && (
-                          <Empty
-                            title="Un día por escribir"
-                            action={
-                              <Button onClick={() => go("cultura")}>
-                                <Plus size={16} />
-                                Explorar visitas
-                              </Button>
-                            }
-                          >
-                            Añade una visita cultural o deja espacio para
-                            improvisar.
-                          </Empty>
-                        )}
+                        {!library.loading &&
+                          !library.error &&
+                          !selectedVisits.some(
+                            (v) =>
+                              (trip.days[v.id] ?? trip.start) === selectedDay,
+                          ) && (
+                            <Empty
+                              title="Un día por escribir"
+                              action={
+                                <Button onClick={() => go("cultura")}>
+                                  <Plus size={16} />
+                                  Explorar visitas
+                                </Button>
+                              }
+                            >
+                              Añade una visita cultural o deja espacio para
+                              improvisar.
+                            </Empty>
+                          )}
                         <article className="free-time">
                           <Utensils size={18} />
                           <div>
@@ -1150,12 +1225,17 @@ export default function App({
                   provider={provider}
                   connections={connections.data}
                   beforeStart={notebook.flush}
+                  onSave={saveProposal}
                   onExpired={onExpired}
                   onChanged={() => void connections.refresh()}
                   focus="culture"
                 />
               )}
-              {isExample && <h2>Fichas de ejemplo · Puglia</h2>}
+              <h2>
+                {isExample
+                  ? "Fichas de ejemplo y propuestas guardadas"
+                  : "Propuestas guardadas en tu viaje"}
+              </h2>
               <div className="culture-toolbar">
                 <div className="search">
                   <Search size={18} />
@@ -1197,6 +1277,7 @@ export default function App({
                   "Patrimonio romano",
                   "Ópera",
                   "Emblemáticos",
+                  "Agenda cultural",
                 ].map((c) => (
                   <button
                     key={c}
@@ -1278,6 +1359,7 @@ export default function App({
                   provider={provider}
                   connections={connections.data}
                   beforeStart={notebook.flush}
+                  onSave={saveProposal}
                   onExpired={onExpired}
                   onChanged={() => void connections.refresh()}
                   focus="food"
@@ -1324,6 +1406,14 @@ export default function App({
                 ))}
               </div>
               <div className="card-grid three">
+                {trip && (
+                  <ResearchFoods
+                    trip={trip}
+                    jobs={library.jobs}
+                    tab={foodTab}
+                    update={update}
+                  />
+                )}
                 {(isExample ? foods : [])
                   .filter(
                     (f) =>
@@ -1399,12 +1489,19 @@ export default function App({
                     </article>
                   ))}
               </div>
-              {(!isExample ||
+              {((!isExample && !savedFoods.length) ||
                 (foodTab !== "Todos" &&
-                  !foods.some((f) =>
-                    foodTab === "Me interesan"
-                      ? trip?.foodInterested.includes(f.id)
-                      : trip?.tasted.includes(f.id),
+                  !(
+                    (isExample ? foods : []).some((f) =>
+                      foodTab === "Me interesan"
+                        ? trip?.foodInterested.includes(f.id)
+                        : trip?.tasted.includes(f.id),
+                    ) ||
+                    savedFoods.some((f) =>
+                      foodTab === "Me interesan"
+                        ? trip?.foodInterested.includes(f.id)
+                        : trip?.tasted.includes(f.id),
+                    )
                   ))) && (
                 <Empty
                   title={
@@ -1426,8 +1523,8 @@ export default function App({
                 </Empty>
               )}
               <p className="footnote">
-                Contenido de ejemplo, pendiente de documentar con fuentes
-                gastronómicas. No incluye establecimientos.
+                Las fichas guardadas conservan las fuentes de la investigación.
+                Las de Puglia son ejemplos. No incluye establecimientos.
               </p>
             </>
           )}
@@ -1453,7 +1550,7 @@ export default function App({
                     role="group"
                     aria-label="Proveedor preferido"
                   >
-                    {["OpenAI", "Gemini", "OpenCode Go"].map((p) => (
+                    {providers.map((p) => (
                       <button
                         key={p}
                         aria-pressed={provider === p}
@@ -1466,18 +1563,22 @@ export default function App({
                         }}
                       >
                         <span className="provider-mark">
-                          {p === "OpenAI" ? "O" : p === "Gemini" ? "G" : "go"}
+                          {p === "OpenAI"
+                            ? "O"
+                            : p === "Gemini"
+                              ? "G"
+                              : p === "Claude"
+                                ? "C"
+                                : "go"}
                         </span>
                         <span>
                           <strong>{p}</strong>
                           <small>
-                            {p === "OpenCode Go"
-                              ? "Compatibilidad pendiente"
-                              : connections.data?.providers.find(
-                                    (item) => item.name === p,
-                                  )?.configured
-                                ? "Clave configurada"
-                                : "Pendiente de configurar"}
+                            {connections.data?.providers.find(
+                              (item) => item.name === p,
+                            )?.configured
+                              ? "Clave configurada"
+                              : "Pendiente de configurar"}
                           </small>
                         </span>
                         {provider === p ? (
@@ -1489,9 +1590,9 @@ export default function App({
                     ))}
                   </div>
                   <div className="notice">
-                    {provider === "OpenCode Go"
-                      ? "Go está orientado a agentes de programación. Hay que confirmar que admite este uso antes de habilitarlo. No se sustituirá por Zen."
-                      : "Las claves se configuran en Cloudflare. Elegir una opción no inicia llamadas ni cambia una investigación ya comenzada."}
+                    {
+                      "Las claves se configuran como secretos en Cloudflare. Se usa un proveedor por investigación. Elegir una opción no inicia llamadas ni cambia una investigación ya comenzada."
+                    }
                   </div>
                   <div className="connection-row">
                     <span>Conexión activa</span>
@@ -1736,7 +1837,7 @@ export default function App({
       )}
       {detail && (
         <Dialog title={detail.title} onClose={() => setDetail(null)}>
-          <VisitArt kind={detail.art} />
+          {detail.research ? <PhotoPending /> : <VisitArt kind={detail.art} />}
           <p className="eyebrow">
             {detail.category} · {detail.town}
           </p>
@@ -1755,10 +1856,14 @@ export default function App({
               <dd>Sin comprobar</dd>
             </div>
           </dl>
-          <div className="notice">
-            Ficha de ejemplo. El enlace de referencia no acredita una consulta
-            ni disponibilidad para tus fechas.
-          </div>
+          {detail.research && trip ? (
+            <ResearchEvidence {...detail.research} trip={trip} />
+          ) : (
+            <div className="notice">
+              Ficha de ejemplo. El enlace de referencia no acredita una consulta
+              ni disponibilidad para tus fechas.
+            </div>
+          )}
           <div className="dialog-actions">
             <a
               className="button secondary"

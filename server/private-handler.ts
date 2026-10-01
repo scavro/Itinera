@@ -7,6 +7,8 @@ import {
   startResearch,
   stepResearch,
   cancelResearch,
+  researchLibrary,
+  validateResearchSelections,
 } from "./research-service";
 import { initialTrip } from "../src/domain";
 
@@ -133,6 +135,15 @@ export async function handlePrivate(
         return json({ error: "La sesión ha finalizado." }, 401);
       if (url.pathname === "/api/connections" && request.method === "GET")
         return json(await connections(env));
+      if (
+        url.pathname === "/api/research/library" &&
+        request.method === "GET"
+      ) {
+        const tripId = url.searchParams.get("tripId") ?? "";
+        if (!tripId || tripId.length > 100)
+          return json({ error: "El viaje no es válido." }, 400);
+        return json({ jobs: await researchLibrary(env, tripId) });
+      }
       if (url.pathname === "/api/research" && request.method === "GET") {
         const tripId = url.searchParams.get("tripId") ?? "";
         if (!tripId || tripId.length > 100)
@@ -201,6 +212,19 @@ export async function handlePrivate(
       if (!input.success)
         return json({ error: "Revisa los datos del viaje." }, 400);
       const { data, version, mutationId } = input.data;
+      const current = await read();
+      if (current?.mutation_id === mutationId)
+        return json({ version: current.version });
+      if (current?.version !== version)
+        return json(
+          { error: "El cuaderno ha cambiado en otro dispositivo." },
+          409,
+        );
+      await validateResearchSelections(
+        env,
+        data.trips,
+        JSON.parse(current.payload).trips,
+      );
       const row = await env.DB.prepare(
         "UPDATE notebook SET payload=?,version=version+1,mutation_id=?,updated_at=unixepoch() WHERE id='owner' AND version=? RETURNING version",
       )
@@ -232,7 +256,9 @@ export async function handlePrivate(
         isLogin ? new Request(`${env.APP_ORIGIN}/`, request) : request,
       ),
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof ResearchError)
+      return json({ error: error.message }, error.status);
     // Avoid recording cookies, credentials, request bodies or upstream error details.
     console.error(
       JSON.stringify({ event: "request_failed", path: url.pathname }),

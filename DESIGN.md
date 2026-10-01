@@ -78,3 +78,7 @@ Button, Field, Dialog, Empty y Toast viven en `src/components/ui.tsx`. Hover ton
 - Usar los mismos estados y acciones en todas las tarjetas culturales.
 - El acceso y el guardado son reales. Investigación con enlaces, fragmentos y fechas; distinguir clave configurada, lectura parcial, propuesta generada y comprobación pendiente. No presentar una búsqueda como reserva.
 - No usar imágenes de destinos como evidencia de disponibilidad.
+
+## Fichas procedentes de investigación
+
+ResearchPanel confirma el guardado antes de mostrar una propuesta como guardada. El cuaderno conserva referencias al dossier de D1; ResearchEvidence comparte fuentes, lectura parcial, fecha y pendientes entre cultura, itinerario y comida. Las visitas mantienen los controles existentes de interés, añadir y día. Los platos reutilizan interés y probado. Sin fotografía identificada se muestra un espacio textual con icono y «Fotografía real pendiente». No sustituirlo por una ilustración de comida. Las fichas de ejemplo conservan su identificación.

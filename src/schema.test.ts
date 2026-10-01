@@ -3,9 +3,11 @@ import { notebookResponseSchema, sessionResponseSchema } from "./schema";
 import {
   parseResearchResponse,
   assertResearchProgress,
+  parseConnectionsResponse,
 } from "./researchSchema";
 import { initialTrip } from "./domain";
 import type { ResearchJob } from "./research";
+import { providers } from "./research";
 const job: ResearchJob = {
   id: "94bf8d20-95d6-435a-95da-062a6d1e00ba",
   tripId: "puglia-demo",
@@ -22,6 +24,25 @@ const job: ResearchJob = {
   warnings: [],
 };
 describe("received data boundaries", () => {
+  it("accepts the four supported connections, including Claude", () => {
+    const connections = {
+      providers: providers.map((name) => ({
+        name,
+        model: "fixture",
+        configured: false,
+        enabled: true,
+      })),
+      search: { name: "Tavily", configured: false, used: 0, limit: 200 },
+      ai: { used: 0, limit: 50 },
+    };
+    expect(parseConnectionsResponse(connections).providers).toHaveLength(4);
+    expect(() =>
+      parseConnectionsResponse({
+        ...connections,
+        providers: [...connections.providers, { name: "Unknown" }],
+      }),
+    ).toThrow(/formato/);
+  });
   it("rejects malformed notebooks and sessions before they reach the view", () => {
     const response = {
       data: {

@@ -28,6 +28,8 @@ const mf = new Miniflare(
       TAVILY_API_KEY: "mock-only",
       GEMINI_MODEL: "gemini-3.5-flash-lite",
       OPENAI_MODEL: "gpt-5-mini",
+      CLAUDE_MODEL: "claude-sonnet-5-5",
+      OPENCODE_MODEL: "kimi-k2.6",
       ALLOW_PAID_AI: "false",
       SEARCH_MONTHLY_LIMIT: "200",
       AI_MONTHLY_LIMIT: "50",
@@ -386,6 +388,78 @@ try {
   ).json();
   expect(usage.search.used, 4);
   expect(usage.ai.used, 1);
+  expect(
+    (await request("/api/research/library?tripId=puglia-demo")).status,
+    401,
+  );
+  const reference = { jobId: job.id, kind: "visits", index: 0 };
+  const savedNotebook = await (
+    await request("/api/notebook", { headers: authHeaders })
+  ).json();
+  const importedData = structuredClone(savedNotebook.data);
+  importedData.trips[0].researchSelections = [reference];
+  const importMutation = randomUUID();
+  const saveRefs = (data, version, mutationId = randomUUID()) =>
+    request("/api/notebook", {
+      method: "PUT",
+      headers: authHeaders,
+      body: JSON.stringify({ data, version, mutationId }),
+    });
+  const imported = await saveRefs(
+    importedData,
+    savedNotebook.version,
+    importMutation,
+  );
+  expect(imported.status, 200);
+  const importedVersion = (await imported.json()).version;
+  expect(
+    (await saveRefs(importedData, savedNotebook.version, importMutation))
+      .status,
+    200,
+  );
+  const library = await (
+    await request("/api/research/library?tripId=puglia-demo", {
+      headers: authHeaders,
+    })
+  ).json();
+  expect(library.jobs[0].id, job.id);
+  expect(library.jobs[0].sources[0].text, "");
+  expect(library.jobs[0].result.visits[0].quote, "Colección de historia");
+  expect(externalCalls.length, 5);
+  for (const invalidRef of [
+    { ...reference, jobId: randomUUID() },
+    { ...reference, index: 8 },
+    { ...reference, kind: "foods", index: 7 },
+  ]) {
+    const invalid = structuredClone(importedData);
+    invalid.trips[0].researchSelections = [invalidRef];
+    expect((await saveRefs(invalid, importedVersion)).status, 422);
+  }
+  const foreignTrip = structuredClone(importedData);
+  foreignTrip.trips.push({ ...foreignTrip.trips[0], id: "other-trip" });
+  expect((await saveRefs(foreignTrip, importedVersion)).status, 422);
+  const duplicateRefs = structuredClone(importedData);
+  duplicateRefs.trips[0].researchSelections.push(reference);
+  expect((await saveRefs(duplicateRefs, importedVersion)).status, 400);
+  const changedData = structuredClone(importedData);
+  changedData.trips[0].notes += "changed";
+  expect((await saveRefs(changedData, importedVersion)).status, 200);
+  const changedVersion = importedVersion + 1;
+  expect(
+    (
+      await request("/api/research/library?tripId=puglia-demo", {
+        headers: authHeaders,
+      })
+    ).status,
+    200,
+  );
+  const removedData = structuredClone(changedData);
+  removedData.trips[0].researchSelections = [];
+  expect((await saveRefs(removedData, changedVersion)).status, 200);
+  expect((await saveRefs(changedData, changedVersion + 1)).status, 422);
+  const resetData = structuredClone(importedData);
+  expect((await saveRefs(resetData, changedVersion + 1)).status, 200);
+  expect(externalCalls.length, 5);
   let cancelled = (
     await (
       await researchRequest("start", {
@@ -571,7 +645,7 @@ try {
         await request("/api/notebook", { headers: { Cookie: secondCookie } })
       ).json()
     ).version,
-    1,
+    importedVersion + 3,
   );
   expect(
     (

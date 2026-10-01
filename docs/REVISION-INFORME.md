@@ -49,3 +49,10 @@ No se ha demostrado un fallo de aislamiento por faltar rate limit adicional para
 ## Evidencia
 
 Ver [VERIFICATION.md](VERIFICATION.md), sección «Contraste del informe externo». Las pruebas de modelos son simuladas y los controles de fallo/caducidad existen únicamente en el bridge Node de QA, nunca en el Worker publicado. Un texto hostil se trata como datos y no puede añadir herramientas al adaptador; esa prueba no demuestra que un modelo real sea inmune a instrucciones maliciosas ni que sus descripciones sean verdaderas. El resultado debe seguir revisándose con sus fuentes.
+
+
+## Actualización — 01/10/2026
+
+El punto 1 se ha implementado: las propuestas terminadas se guardan como fichas seleccionables conservando referencias al dossier original; visitas y agendas se pueden añadir al itinerario, platos a intereses/probados. Se validan pertenencia, índices y criterios en el servidor. Las fuentes y citas no se reescriben desde el cuaderno.
+
+Los cuatro adaptadores están preparados, incluido Go por petición expresa del usuario. El punto 5 sigue pendiente únicamente en cuanto a introducir claves y validar respuestas reales del modelo y Tavily. Los puntos 2, 3, 4 y 6 continúan abiertos. Evidencia de esta fase en VERIFICATION.md; no sustituye una comprobación real de precios, agendas completas o disponibilidad.

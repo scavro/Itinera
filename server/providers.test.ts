@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generateProposal, externalJson } from "./research-tools";
+import {
+  generateProposal,
+  externalJson,
+  claudeJsonSchema,
+} from "./research-tools";
 import { configuredLimit, type ResearchEnv } from "./connections";
 import { initialTrip } from "../src/domain";
 import type { Source } from "../src/research";
@@ -167,5 +171,162 @@ describe("OpenAI adapter with intercepted transport", () => {
     for (const value of [undefined, "abc", "NaN", "-1", "0", "1.5", "Infinity"])
       expect(configuredLimit(value)).toBe(0);
     expect(configuredLimit("200")).toBe(200);
+  });
+});
+describe("Claude and OpenCode Go adapters with intercepted transport", () => {
+  it("uses Claude Messages with compatible schema and checks the original limits", async () => {
+    const transport = vi.fn(async (url: string, init: RequestInit) => {
+      expect(url).toBe("https://api.anthropic.com/v1/messages");
+      const headers = init.headers as Record<string, string>;
+      expect(headers["x-api-key"]).toBe("fixture-claude");
+      expect(headers["anthropic-version"]).toBe("2023-06-01");
+      const body = JSON.parse(init.body as string);
+      expect(body.tools).toBeUndefined();
+      expect(
+        body.output_config.format.schema.properties.summary.maxLength,
+      ).toBeUndefined();
+      expect(body.system).toContain("DATOS NO FIABLES");
+      return Response.json({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: JSON.stringify(proposal) }],
+      });
+    });
+    vi.stubGlobal("fetch", transport);
+    const claudeEnv = {
+      ...env,
+      ANTHROPIC_API_KEY: "fixture-claude",
+      CLAUDE_MODEL: "claude-sonnet-4-6",
+    };
+    expect(
+      await generateProposal(
+        claudeEnv,
+        "Claude",
+        claudeEnv.CLAUDE_MODEL,
+        initialTrip,
+        sources,
+      ),
+    ).toEqual(proposal);
+    expect(transport).toHaveBeenCalledTimes(1);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          stop_reason: "end_turn",
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ ...proposal, summary: "x".repeat(2001) }),
+            },
+          ],
+        }),
+      ),
+    );
+    await expect(
+      generateProposal(
+        claudeEnv,
+        "Claude",
+        claudeEnv.CLAUDE_MODEL,
+        initialTrip,
+        sources,
+      ),
+    ).rejects.toThrow(/formato/);
+    expect(
+      claudeJsonSchema({ minLength: 1, maxLength: 4, type: "string" }),
+    ).toEqual({ type: "string" });
+  });
+  it("keeps Go on its subscription endpoint and sends an honest client identity and stable session", async () => {
+    const transport = vi.fn(async (url: string, init: RequestInit) => {
+      expect(url).toBe("https://opencode.ai/zen/go/v1/chat/completions");
+      const headers = init.headers as Record<string, string>;
+      expect(headers["x-opencode-session"]).toBe("fixture-conversation");
+      expect(headers["User-Agent"]).toContain("travel-assistant");
+      expect(headers.Authorization).toBe("Bearer fixture-go");
+      const body = JSON.parse(init.body as string);
+      expect(body.model).toBe("kimi-k2.6");
+      expect(body.stream).toBe(false);
+      expect(body.tools).toBeUndefined();
+      expect(body.messages[0].content).toContain("sourceIds");
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: { content: JSON.stringify(proposal) },
+          },
+        ],
+      });
+    });
+    vi.stubGlobal("fetch", transport);
+    const goEnv = {
+      ...env,
+      OPENCODE_API_KEY: "fixture-go",
+      OPENCODE_MODEL: "kimi-k2.6",
+      ALLOW_PAID_AI: "false",
+    };
+    expect(
+      await generateProposal(
+        goEnv,
+        "OpenCode Go",
+        goEnv.OPENCODE_MODEL,
+        initialTrip,
+        sources,
+        "fixture-conversation",
+      ),
+    ).toEqual(proposal);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+  it("rejects incomplete replies and never changes providers after a quota failure", async () => {
+    const goEnv = {
+      ...env,
+      OPENCODE_API_KEY: "fixture-go",
+      OPENCODE_MODEL: "kimi-k2.6",
+    };
+    for (const reply of [
+      { choices: [{ finish_reason: "length", message: { content: "{}" } }] },
+      {
+        choices: [
+          { finish_reason: "stop", message: { content: "```json\n{}\n```" } },
+        ],
+      },
+    ]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json(reply)),
+      );
+      await expect(
+        generateProposal(
+          goEnv,
+          "OpenCode Go",
+          goEnv.OPENCODE_MODEL,
+          initialTrip,
+          sources,
+        ),
+      ).rejects.toThrow();
+    }
+    const failed = vi.fn(async () => Response.json({}, { status: 429 }));
+    vi.stubGlobal("fetch", failed);
+    await expect(
+      generateProposal(
+        goEnv,
+        "OpenCode Go",
+        goEnv.OPENCODE_MODEL,
+        initialTrip,
+        sources,
+      ),
+    ).rejects.toThrow(/cuota/);
+    expect(failed).toHaveBeenCalledTimes(1);
+  });
+  it("keeps Claude inactive before payment activation", async () => {
+    const transport = vi.fn();
+    vi.stubGlobal("fetch", transport);
+    await expect(
+      generateProposal(
+        { ...env, ALLOW_PAID_AI: "false", ANTHROPIC_API_KEY: "fixture" },
+        "Claude",
+        "claude-sonnet-4-6",
+        initialTrip,
+        sources,
+      ),
+    ).rejects.toThrow(/desactivado/);
+    expect(transport).not.toHaveBeenCalled();
   });
 });

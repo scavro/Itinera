@@ -1,3 +1,4 @@
+import type { ResearchJob, ProposalItem, ResearchSelection } from "./research";
 export type Page =
   | "viajes"
   | "preparar"
@@ -7,7 +8,7 @@ export type Page =
   | "sabores"
   | "ajustes";
 export type Category =
-  "Museos" | "Patrimonio romano" | "Ópera" | "Emblemáticos";
+  "Museos" | "Patrimonio romano" | "Ópera" | "Emblemáticos" | "Agenda cultural";
 export type Trip = {
   id: string;
   destination: string;
@@ -25,6 +26,7 @@ export type Trip = {
   checked: string[];
   days: Record<string, string>;
   demo: boolean;
+  researchSelections?: ResearchSelection[];
 };
 export type Visit = {
   id: string;
@@ -36,6 +38,7 @@ export type Visit = {
   art: "museum" | "roman" | "opera" | "coast";
   priority: string;
   source: string;
+  research?: { job: ResearchJob; item: ProposalItem };
 };
 export const visits: Visit[] = [
   {

@@ -14,6 +14,8 @@ import {
   type ResearchJob,
   type ProposalItem,
   type Source,
+  type ResearchSelection,
+  researchItemId,
 } from "../research";
 import type { Trip } from "../domain";
 import { Button } from "./ui";
@@ -97,6 +99,18 @@ export function ConnectionStatus({
               {data.ai.used} / {data.ai.limit}
             </strong>
           </div>
+          {data.providers.map((p) => (
+            <div className="connection-row" key={p.name}>
+              <span>{p.name}</span>
+              <strong>
+                {!p.configured
+                  ? "Falta clave"
+                  : !p.enabled
+                    ? "Consumo de pago sin activar"
+                    : "Clave configurada"}
+              </strong>
+            </div>
+          ))}
           <p>
             La cuota incluye intentos fallidos para evitar exceder el límite
             ante respuestas inciertas. Las claves se guardan en Cloudflare. Una
@@ -119,20 +133,90 @@ function References({ ids, sources }: { ids: string[]; sources: Source[] }) {
               {s.title}
               <ExternalLink size={14} />
             </a>
+            <small>
+              {s.read === "page"
+                ? "Lectura parcial"
+                : s.read === "search"
+                  ? "Resultado de buscador"
+                  : "Lectura no disponible"}{" "}
+              ·{" "}
+              {new Intl.DateTimeFormat("es-ES", {
+                dateStyle: "short",
+                timeStyle: "short",
+              }).format(new Date(s.consultedAt))}
+            </small>
           </li>
         ) : null;
       })}
     </ul>
   );
 }
+export function ResearchEvidence({
+  job,
+  item,
+  trip,
+}: {
+  job: ResearchJob;
+  item: ProposalItem;
+  trip: Trip;
+}) {
+  const stale = job.fingerprint !== researchFingerprint(trip);
+  return (
+    <details className="research-evidence">
+      <summary>
+        {stale
+          ? "Viaje modificado · revisar fuentes"
+          : "Fuentes y comprobaciones pendientes"}
+      </summary>
+      {stale && (
+        <p className="notice">
+          Los detalles del viaje han cambiado desde esta investigación. Revisa
+          la propuesta para el destino y las fechas actuales.
+        </p>
+      )}
+      <p>
+        Propuesta de {job.provider} · {job.model}. Precios, horarios y
+        disponibilidad sin comprobar.
+      </p>
+      {item.quote && (
+        <blockquote>
+          <p>«{item.quote}»</p>
+          <small>
+            Fragmento de{" "}
+            {job.sources.find((s) => s.id === item.quoteSourceId)?.title} ·
+            lectura parcial
+          </small>
+        </blockquote>
+      )}
+      <References ids={item.sourceIds} sources={job.sources} />
+      <ul>
+        {[...job.warnings, ...(job.result?.pending ?? [])].map((text, i) => (
+          <li key={i}>{text}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
 function ProposalList({
   title,
   items,
   sources,
+  kind,
+  job,
+  trip,
+  onSave,
+  saving,
+  disabled,
 }: {
   title: string;
   items: ProposalItem[];
   sources: Source[];
+  kind: ResearchSelection["kind"];
+  job: ResearchJob;
+  trip: Trip;
+  onSave: (ref: ResearchSelection) => void;
+  saving: string;
+  disabled: boolean;
 }) {
   return (
     <section className="research-section">
@@ -160,6 +244,29 @@ function ProposalList({
               <small className="research-pending">
                 Datos para tus fechas pendientes de comprobación.
               </small>
+              <Button
+                disabled={
+                  disabled ||
+                  trip.researchSelections?.some(
+                    (r) =>
+                      researchItemId(r) ===
+                      researchItemId({ jobId: job.id, kind, index }),
+                  )
+                }
+                onClick={() => onSave({ jobId: job.id, kind, index })}
+              >
+                {saving === researchItemId({ jobId: job.id, kind, index })
+                  ? "Guardando…"
+                  : trip.researchSelections?.some(
+                        (r) =>
+                          researchItemId(r) ===
+                          researchItemId({ jobId: job.id, kind, index }),
+                      )
+                    ? "Guardado en el viaje"
+                    : kind === "foods"
+                      ? "Guardar para probar"
+                      : "Guardar visita"}
+              </Button>
             </article>
           ))}
         </div>
@@ -174,6 +281,7 @@ export function ResearchPanel({
   beforeStart,
   onExpired,
   onChanged,
+  onSave,
   focus = "all",
 }: {
   trip: Trip;
@@ -182,12 +290,30 @@ export function ResearchPanel({
   beforeStart: () => Promise<void>;
   onExpired: () => void;
   onChanged: () => void;
+  onSave: (job: ResearchJob, ref: ResearchSelection) => Promise<void>;
   focus?: "all" | "culture" | "food";
 }) {
   const blocked = useContext(SessionBlocked);
   const [job, setJob] = useState<ResearchJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const savingGuard = useRef(false);
+  async function save(ref: ResearchSelection) {
+    if (!job || savingGuard.current || blocked) return;
+    savingGuard.current = true;
+    setSaving(researchItemId(ref));
+    setSaveError("");
+    try {
+      await onSave(job, ref);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    } finally {
+      savingGuard.current = false;
+      setSaving("");
+    }
+  }
   const [cancelling, setCancelling] = useState(false);
   const cancelActive = useRef(false);
   const [error, setError] = useState("");
@@ -416,6 +542,12 @@ export function ResearchPanel({
           {error}
         </div>
       )}
+      {saveError && (
+        <div className="notice" role="alert">
+          {saveError} Puedes reintentar guardar la misma ficha cuando recuperes
+          la conexión.
+        </div>
+      )}
       {!loading && (
         <div className="research-actions">
           {!job || ["done", "cancelled"].includes(job.status) ? (
@@ -491,11 +623,35 @@ export function ResearchPanel({
                     title="Museos, Roma y lugares emblemáticos"
                     items={job.result.visits}
                     sources={job.sources}
+                    kind="visits"
+                    job={job}
+                    trip={trip}
+                    onSave={(ref) => void save(ref)}
+                    saving={saving}
+                    disabled={
+                      !!saving ||
+                      busy ||
+                      stale ||
+                      blocked ||
+                      job.status !== "done"
+                    }
                   />
                   <ProposalList
                     title="Agendas culturales y ópera por revisar"
                     items={job.result.agendas}
                     sources={job.sources}
+                    kind="agendas"
+                    job={job}
+                    trip={trip}
+                    onSave={(ref) => void save(ref)}
+                    saving={saving}
+                    disabled={
+                      !!saving ||
+                      busy ||
+                      stale ||
+                      blocked ||
+                      job.status !== "done"
+                    }
                   />
                 </>
               )}
@@ -504,6 +660,18 @@ export function ResearchPanel({
                   title="Gastronomía del país y la región"
                   items={job.result.foods}
                   sources={job.sources}
+                  kind="foods"
+                  job={job}
+                  trip={trip}
+                  onSave={(ref) => void save(ref)}
+                  saving={saving}
+                  disabled={
+                    !!saving ||
+                    busy ||
+                    stale ||
+                    blocked ||
+                    job.status !== "done"
+                  }
                 />
               )}
               <section className="research-section">

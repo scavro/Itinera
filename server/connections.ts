@@ -4,6 +4,8 @@ export type AiSecrets = {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
   TAVILY_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+  OPENCODE_API_KEY?: string;
 };
 export type ResearchEnv = Env & AiSecrets;
 export class ResearchError extends Error {
@@ -15,22 +17,34 @@ export class ResearchError extends Error {
   }
 }
 export function providerConfig(env: ResearchEnv, provider: Provider) {
-  if (provider === "OpenCode Go")
-    throw new ResearchError(
-      422,
-      "OpenCode Go requiere confirmar que admite este uso. Elige Gemini u OpenAI.",
-    );
-  const key = provider === "Gemini" ? env.GEMINI_API_KEY : env.OPENAI_API_KEY;
-  const model = provider === "Gemini" ? env.GEMINI_MODEL : env.OPENAI_MODEL;
+  const key =
+    provider === "Gemini"
+      ? env.GEMINI_API_KEY
+      : provider === "Claude"
+        ? env.ANTHROPIC_API_KEY
+        : provider === "OpenCode Go"
+          ? env.OPENCODE_API_KEY
+          : env.OPENAI_API_KEY;
+  const model =
+    provider === "Gemini"
+      ? env.GEMINI_MODEL
+      : provider === "Claude"
+        ? env.CLAUDE_MODEL
+        : provider === "OpenCode Go"
+          ? env.OPENCODE_MODEL
+          : env.OPENAI_MODEL;
   if (!key)
     throw new ResearchError(
       422,
       `Configura la clave de ${provider} en Cloudflare antes de investigar.`,
     );
-  if (provider === "OpenAI" && env.ALLOW_PAID_AI !== "true")
+  if (
+    (provider === "OpenAI" || provider === "Claude") &&
+    env.ALLOW_PAID_AI !== "true"
+  )
     throw new ResearchError(
       422,
-      "OpenAI está desactivado hasta autorizar y configurar su consumo de pago.",
+      `${provider} está desactivado hasta autorizar y configurar su consumo de pago.`,
     );
   return { provider, key, model };
 }
@@ -62,7 +76,18 @@ export async function connections(env: ResearchEnv) {
         model: env.OPENAI_MODEL,
         enabled: env.ALLOW_PAID_AI === "true",
       },
-      { name: "OpenCode Go", configured: false, model: "", enabled: false },
+      {
+        name: "Claude",
+        configured: !!env.ANTHROPIC_API_KEY,
+        model: env.CLAUDE_MODEL,
+        enabled: env.ALLOW_PAID_AI === "true",
+      },
+      {
+        name: "OpenCode Go",
+        configured: !!env.OPENCODE_API_KEY,
+        model: env.OPENCODE_MODEL,
+        enabled: true,
+      },
     ],
     search: {
       name: "Tavily",

@@ -3,6 +3,7 @@ import { notebookSchema } from "./schema";
 import type { Trip } from "../src/domain";
 import {
   researchFingerprint,
+  researchItemId,
   type ResearchJob,
   type Source,
   type Proposal,
@@ -85,6 +86,65 @@ export async function latestResearch(env: ResearchEnv, tripId: string) {
     .bind(tripId)
     .first<Row>();
   return row ? view(row) : null;
+}
+// Keep only references in the notebook. The completed dossier remains the source
+// of truth, so saving a visit cannot rewrite its evidence or verification state.
+export async function validateResearchSelections(
+  env: ResearchEnv,
+  trips: Trip[],
+  previous: Trip[],
+) {
+  const jobs = new Map<string, Row | null>();
+  for (const trip of trips) {
+    const old = new Set(
+      previous
+        .find((t) => t.id === trip.id)
+        ?.researchSelections?.map(researchItemId),
+    );
+    for (const ref of trip.researchSelections ?? []) {
+      if (old.has(researchItemId(ref))) continue;
+      if (!jobs.has(ref.jobId)) jobs.set(ref.jobId, await read(env, ref.jobId));
+      const row = jobs.get(ref.jobId);
+      if (!row || row.trip_id !== trip.id || row.status !== "done")
+        throw new ResearchError(
+          422,
+          "La propuesta no pertenece a una investigación terminada de este viaje.",
+        );
+      const job = view(row);
+      if (!job.result?.[ref.kind][ref.index])
+        throw new ResearchError(
+          422,
+          "La propuesta elegida ya no está disponible.",
+        );
+      if (row.fingerprint !== researchFingerprint(trip))
+        throw new ResearchError(
+          422,
+          "El viaje ha cambiado. Investiga sus nuevos detalles antes de guardar propuestas.",
+        );
+    }
+  }
+}
+export async function researchLibrary(env: ResearchEnv, tripId: string) {
+  const data = await notebook(env);
+  const trip = data.trips.find((t) => t.id === tripId);
+  if (!trip) throw new ResearchError(404, "El viaje ya no existe.");
+  const jobs: ResearchJob[] = [];
+  for (const id of new Set(trip.researchSelections?.map((r) => r.jobId))) {
+    const row = await read(env, id);
+    if (!row || row.trip_id !== tripId || row.status !== "done")
+      throw new ResearchError(
+        503,
+        "No podemos abrir una propuesta guardada. Vuelve a cargar las fuentes.",
+      );
+    const job = view(row);
+    // The literal quote is retained in each proposal. Avoid transmitting full
+    // extracted pages each time the notebook is opened on a mobile connection.
+    jobs.push({
+      ...job,
+      sources: job.sources.map((s) => ({ ...s, text: "" })),
+    });
+  }
+  return jobs;
 }
 export async function startResearch(env: ResearchEnv, input: unknown) {
   const parsed = startSchema.safeParse(input);
@@ -224,10 +284,11 @@ export async function stepResearch(env: ResearchEnv, input: unknown) {
         );
       payload.result = await generateProposal(
         env,
-        row.provider as "Gemini" | "OpenAI",
+        row.provider,
         row.model,
         payload.trip,
         payload.sources,
+        row.id,
       );
       payload.warnings = [
         "Lectura parcial: hasta cinco páginas. La cobertura de agendas no es exhaustiva.",

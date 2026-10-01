@@ -104,6 +104,9 @@ export function TripEditor({
                 checked: trip?.checked ?? [],
                 days: trip ? updateTripDates(trip, draft.start, draft.end) : {},
                 demo: trip?.demo ?? false,
+                ...(trip?.researchSelections
+                  ? { researchSelections: trip.researchSelections }
+                  : {}),
               });
             } catch (e) {
               setSaveError((e as Error).message);

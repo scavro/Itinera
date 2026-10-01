@@ -215,3 +215,7 @@ Estas decisiones no requieren todavía credenciales para revisar el plan ni cons
 - [OpenAI: llamadas a herramientas](https://developers.openai.com/api/docs/guides/function-calling)
 - [Gemini: llamadas a herramientas](https://ai.google.dev/gemini-api/docs/function-calling)
 - [OpenCode Go: uso previsto, suscripción y endpoints de API](https://opencode.ai/docs/go/)
+
+### Actualización 2026-10-01
+
+Petición explícita: preparar Gemini, OpenAI, Claude y OpenCode Go para claves privadas, con uno por investigación. Go tiene adaptador técnico de Chat Completions sin suplantación del cliente ni fallback a Zen. OpenAI/Claude conservan activación de consumo separada. Pendiente validación real de claves/proveedores. Se añade guardar visitas, agendas y platos por referencias a dossiers terminados; fuentes y estados por comprobar se conservan, itinerario con día editable y fotografía real pendiente. No se modifican planes de Cloudflare ni se introducen restaurantes.

@@ -29,6 +29,8 @@ const mf = new Miniflare(
       TAVILY_API_KEY: "mock-only",
       GEMINI_MODEL: "gemini-3.5-flash-lite",
       OPENAI_MODEL: "gpt-5-mini",
+      CLAUDE_MODEL: "claude-sonnet-5-5",
+      OPENCODE_MODEL: "kimi-k2.6",
       ALLOW_PAID_AI: "false",
       SEARCH_MONTHLY_LIMIT: "200",
       AI_MONTHLY_LIMIT: "50",

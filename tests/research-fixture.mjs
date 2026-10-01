@@ -20,8 +20,28 @@ const fixtureProposal = {
       quoteSourceId: "s1",
     },
   ],
-  agendas: [],
-  foods: [],
+  agendas: [
+    {
+      title: "Agenda de ópera de prueba",
+      area: "Puglia",
+      category: "Ópera",
+      description: "Programación ficticia por revisar",
+      sourceIds: ["s2"],
+      quote: "",
+      quoteSourceId: "",
+    },
+  ],
+  foods: [
+    {
+      title: "Plato de prueba",
+      area: "Italia · Puglia",
+      category: "Gastronomía regional",
+      description: "Plato ficticio sin fotografía real disponible",
+      sourceIds: ["s3"],
+      quote: "",
+      quoteSourceId: "",
+    },
+  ],
   pending: ["Programación pendiente de publicación"],
 };
 export const mockExternal = async (request) => {

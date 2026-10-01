@@ -1,4 +1,13 @@
-export type Provider = "OpenAI" | "Gemini" | "OpenCode Go";
+export const providers = ["OpenAI", "Gemini", "Claude", "OpenCode Go"] as const;
+export type Provider = (typeof providers)[number];
+export type ResearchSelection = {
+  jobId: string;
+  kind: "visits" | "agendas" | "foods";
+  index: number;
+};
+export function researchItemId(ref: ResearchSelection) {
+  return `research-${ref.jobId}-${ref.kind}-${ref.index}`;
+}
 export const researchStages = [
   "Localizar museos y patrimonio",
   "Revisar agendas culturales",

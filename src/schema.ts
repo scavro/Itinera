@@ -1,5 +1,19 @@
 import { z } from "zod";
 import { validDate } from "./domain";
+import { providers, researchItemId } from "./research";
+export const researchSelectionSchema = z
+  .object({
+    jobId: z.string().uuid(),
+    kind: z.enum(["visits", "agendas", "foods"]),
+    index: z.number().int().min(0).max(9),
+  })
+  .strict()
+  .refine((r) => r.kind === "visits" || r.index < 8);
+const researchSelections = z
+  .array(researchSelectionSchema)
+  .max(30)
+  .refine((refs) => new Set(refs.map(researchItemId)).size === refs.length)
+  .refine((refs) => new Set(refs.map((r) => r.jobId)).size <= 5);
 const ids = z.array(z.string().min(1).max(100)).max(200);
 export const tripSchema = z
   .object({
@@ -19,6 +33,7 @@ export const tripSchema = z
     checked: ids,
     days: z.record(z.string().max(100), z.string().refine(validDate)),
     demo: z.boolean(),
+    researchSelections: researchSelections.optional(),
   })
   .strict()
   .refine(
@@ -35,7 +50,7 @@ export const notebookSchema = z
   .object({
     trips: z.array(tripSchema).max(100),
     active: z.string().max(100),
-    provider: z.enum(["OpenAI", "Gemini", "OpenCode Go"]),
+    provider: z.enum(providers),
   })
   .strict()
   .refine((n) => new Set(n.trips.map((t) => t.id)).size === n.trips.length)

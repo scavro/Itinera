@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApiError } from "./api";
-import type { Connections, ResearchJob } from "./research";
+import { providers, type Connections, type ResearchJob } from "./research";
 const entrySchema = z
   .object({
     title: z.string().min(1).max(150),
@@ -55,7 +55,7 @@ export const researchJobSchema = z
     id: z.string().uuid(),
     tripId: z.string().min(1).max(100),
     fingerprint: z.string().max(5000),
-    provider: z.enum(["Gemini", "OpenAI", "OpenCode Go"]),
+    provider: z.enum(providers),
     model: z.string().max(150),
     status: z.enum(["ready", "running", "done", "error", "cancelled"]),
     stage: z.number().int().min(0).max(5),
@@ -106,14 +106,14 @@ export function parseConnectionsResponse(value: unknown): Connections {
         .array(
           z
             .object({
-              name: z.enum(["Gemini", "OpenAI", "OpenCode Go"]),
+              name: z.enum(providers),
               configured: z.boolean(),
               model: z.string().max(150),
               enabled: z.boolean(),
             })
             .strict(),
         )
-        .max(3),
+        .max(providers.length),
       search: z
         .object({
           name: z.string().min(1).max(100),

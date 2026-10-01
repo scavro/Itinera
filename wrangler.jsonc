@@ -22,6 +22,8 @@
     "APP_ORIGIN": "http://127.0.0.1:8787",
     "GEMINI_MODEL": "gemini-3.5-flash-lite",
     "OPENAI_MODEL": "gpt-5-mini",
+    "CLAUDE_MODEL": "claude-sonnet-5-5",
+    "OPENCODE_MODEL": "kimi-k2.6",
     "ALLOW_PAID_AI": "false",
     "SEARCH_MONTHLY_LIMIT": "200",
     "AI_MONTHLY_LIMIT": "50"
@@ -41,6 +43,8 @@
         "APP_ORIGIN": "https://itinera.scavro.workers.dev",
         "GEMINI_MODEL": "gemini-3.5-flash-lite",
         "OPENAI_MODEL": "gpt-5-mini",
+        "CLAUDE_MODEL": "claude-sonnet-5-5",
+        "OPENCODE_MODEL": "kimi-k2.6",
         "ALLOW_PAID_AI": "false",
         "SEARCH_MONTHLY_LIMIT": "200",
         "AI_MONTHLY_LIMIT": "50"

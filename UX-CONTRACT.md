@@ -67,3 +67,9 @@ Typecheck, seis tests de dominio, build, formato, tokens y audit strict. Integra
 ## Investigación con fuentes
 
 ResearchPanel es el componente compartido de Preparar, Cultura y Qué probar. Estados: cargando, conexión pendiente, listo, investigando, error recuperable, cancelado y propuesta guardada. Error persistente con reanudación explícita; sin fallback ni polling automático. Las lecturas muestran búsqueda/página parcial/inaccesible, URL y momento. Las citas requieren coincidencia literal y referencias conocidas; el resto de hechos conserva comprobación pendiente. En Ajustes, clave configurada no equivale a consulta validada. El esquema de fuentes no permite marcar precios ni plazas como confirmados.
+
+## Guardar propuestas de investigación
+
+Propietario canónico de mutaciones: NotebookStore y useNotebook; importación confirmada por commit con UUID y versión, sin optimismo. App bloquea acciones mientras confirma; ResearchPanel conserva error y reintento. Identificador estable por dossier/tipo/índice evita duplicados; el servidor comprueba propietario, viaje, resultado terminado y criterios actuales en referencias nuevas. No copiar texto de fuentes al cuaderno ni permitir que PUT cambie la evidencia original. Bibliotecas leídas mediante API privada con abort y generación al cambiar viaje/caducar sesión; fallo ofrece recarga persistente.
+
+ResearchEvidence es el dueño compartido de fuentes, citas, lectura y pendientes. Las fichas antiguas sobreviven a cambios de fechas/destino con aviso; una importación nueva requiere investigar criterios actuales. Hasta 30 referencias de 5 dossiers por viaje. TripEditor conserva referencias y reajusta los días mediante la función de dominio existente. Retirar una ficha limpia selección, día, interés y probado, conservando el dossier original. Exportar el borrador conserva referencias, pero no constituye una copia autónoma del dossier; la advertencia existente lo explica.
