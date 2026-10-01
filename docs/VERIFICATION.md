@@ -155,3 +155,6 @@ Petición explícita del propietario: preparar claves de Gemini, OpenAI, Claude 
 Capturas locales: `qa/four-providers.jpg`, `qa/imported-museum.jpg`, `qa/imported-food-mobile.jpg`, `qa/imported-food-dark.jpg`. Los estados «Clave configurada» visibles son secretos ficticios del harness, no conexiones aceptadas en producción. Las fichas nuevas muestran fotografía real pendiente; todavía no se obtienen imágenes nuevas.
 
 **GitHub automático:** el propietario volvió a abrir Cloudflare, pero la vista del Worker volvió a bloquearse y fallar en el navegador integrado. No se ha creado token ni conectado Builds. La autorización OAuth existente no permite configurarlo por CLI. Se conserva pendiente; no se afirma que un push despliegue automáticamente.
+
+
+**Publicación y retirada de QA:** código en commit `e717f2e`, desplegado manualmente en el Worker existente, versión `933ec3f6-3f32-4a07-95c8-b052e879e2af`. Nueve comprobaciones remotas anónimas correctas: login/JS 200 con cabeceras y caché, sesión/cuaderno/conexiones/investigación/biblioteca 401 y dos mutaciones de origen ajeno 403. Evidencia `qa/connections-remote.json`. No se ha usado el login del propietario ni se han aceptado claves reales. Los procesos de QA terminaron, se verificó que el fichero temporal de credenciales desapareció, se cerró la pestaña creada para pruebas y se restableció el viewport.

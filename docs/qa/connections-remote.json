@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-10-01T09:09:47.330Z",
+  "commit": "e717f2e",
+  "version": "933ec3f6-3f32-4a07-95c8-b052e879e2af",
+  "scope": "Anonymous access, assets and foreign origin only. No owner login or live provider requests.",
+  "checks": [
+    {
+      "path": "/login",
+      "status": 200,
+      "expected": 200,
+      "nosniff": true
+    },
+    {
+      "path": "/assets/index-CyVM-o-P.js",
+      "status": 200,
+      "expected": 200,
+      "nosniff": true,
+      "cache": "public, max-age=0, must-revalidate"
+    },
+    {
+      "path": "/api/session",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/notebook",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/connections",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/research?tripId=puglia-demo",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/research/library?tripId=puglia-demo",
+      "status": 401,
+      "expected": 401,
+      "nosniff": true
+    },
+    {
+      "path": "/api/research/start",
+      "status": 403,
+      "expected": 403,
+      "nosniff": true,
+      "foreignOrigin": true
+    },
+    {
+      "path": "/api/auth/sign-out",
+      "status": 403,
+      "expected": 403,
+      "nosniff": true,
+      "foreignOrigin": true
+    }
+  ]
+}
